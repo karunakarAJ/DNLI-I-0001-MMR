@@ -1,0 +1,5459 @@
+# NOTE: This is a safety-focused version of the MMR template.
+# CSF HS (primary efficacy), Serum NfL (secondary efficacy), and
+# Clinical Outcome Assessment results (exploratory efficacy) have been removed.
+# Urine HS is included per medical monitor direction.
+# Reference: Protocol DNLI-I-0001 V6, Section 9.1
+
+---
+title: ""
+format:
+  pdf:
+    documentclass: article
+    number-sections: true
+    geometry: a4paper, margin=0.5in
+    pdf-engine: xelatex
+    # toc: true 
+    # toc-depth: 6
+    # toc-title: "Table of Contents" 
+header-includes:
+  - \usepackage{lscape}
+  - \newcommand{\blandscape}{\begin{landscape}}
+  - \newcommand{\elandscape}{\end{landscape}}
+  - \pagestyle{plain}
+  # - \usepackage{draftwatermark}
+  # - \SetWatermarkText{DRAFT}
+  # - \SetWatermarkScale{1.2}
+  # - \SetWatermarkLightness{0.9}
+editor: visual
+---
+
+```{=latex}
+\pagenumbering{gobble}
+```
+
+\vspace{1cm}
+
+![](denali.jpg){fig-align="center"}
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+snapshot <- "2026-02-25"
+
+safetylab_dt <- "2026-02-13"
+# EXCLUDED - efficacy # csf_dt <- "2025-07-18"
+
+urine_dt <- "2025-07-18"
+
+ada_dt <- "2026-02-20"
+
+irt_current <- "DNLI-I-0001_PROD_01FEB2026.csv"
+irt_current_dt <- "2026-02-01"
+# EXCLUDED - efficacy # qs_current <- "DNLI-I-0001_MEDAVANTE-PROPHASE_QS_20260210.xpt"
+# EXCLUDED - efficacy # qs_current_dt <- "2026-02-10"
+ 
+pd_current <- "DNLI-I-0001_Deviations_PD Review 05Dec25-12Jan26.xlsx" 
+pd_current_dt <- "2026-01"
+
+```
+
+```{=latex}
+{
+\thispagestyle{empty}
+
+\begin{center}
+
+\vspace{2cm}
+
+\Huge \textbf{MEDICAL MONITORING REPORT [FEB 2026]}
+
+\vspace{1cm}
+
+\Huge \textbf{DNL-126 [I-0001]}
+
+\end{center}
+
+\vspace{1em}
+
+\Large
+\begin{flushleft}
+\textbf{Input data:}
+
+\textbf{EDC} \\
+Current review cycle snapshot date: \textbf{\texttt{`r snapshot`}} \\
+
+\vspace{1em}
+
+\textbf{PD log} \\
+Current review cycle: \textbf{\texttt{`r pd_current_dt`}} \\
+
+\vspace{1em}
+
+\textbf{Safety Lab} \\
+MLM data transfer: \textbf{\texttt{`r safetylab_dt`}} \\
+
+\vspace{1em}
+
+\textbf{IRT} \\
+4G Clinical data tranafer: \textbf{\texttt{`r irt_current_dt`}} \\
+
+% EXCLUDED (efficacy): Biomarkers/Clinical Outcomes cover reference
+\vspace{1em}
+
+\textbf{Anti Drug Antibodies} \\
+Bioagilytix data transfer: \textbf{\texttt{`r ada_dt`}} \\
+
+% EXCLUDED (efficacy): Biomarkers/Clinical Outcomes cover reference
+\end{flushleft}
+
+\vfill
+
+\begin{center}
+\textcolor{red}{\textbf{\textit{Confidential Study Report}}}
+\end{center}
+}
+```
+
+\newpage
+
+```{=latex}
+{
+\thispagestyle{empty}
+
+{\LARGE \textbf{Planned doses in Study Cohorts (Protocol V6)} \par}
+
+\subsection*{Cohort A1}
+\begin{itemize}
+  \item 3 mg/kg QW at Weeks 1 and 2, followed by 10 mg/kg at Week 3 administered Q2W for at least 12 doses.
+  \item Once the target dose has been determined, participants will be switched to the target dose after Week 25 or later.
+\end{itemize}
+
+\subsection*{Cohort A2}
+\begin{itemize}
+  \item 3 mg/kg QW at Weeks 1 and 2, followed by 3 mg/kg at Week 3 administered Q2W for up to 12 doses.
+  \item The dose level and/or dosing frequency may be increased to 6 mg/kg and subsequently to 10 mg/kg QW (pending satisfactory safety review by the DEC), as described in the protocol.
+  \item Once the target dose has been determined, participants will be switched to the target dose after Week 25 or later.
+\end{itemize}
+
+\subsection*{Cohort A3}
+\begin{itemize}
+  \item The starting dose in Cohort A3 is 3 mg/kg QW for at least six doses.
+  \item Dose will then be increased to 6 mg/kg QW for at least six doses and subsequently be increased to 10 mg/kg QW, as described in the protocol.
+\end{itemize}
+
+\subsection*{Cohort B1}
+\begin{itemize}
+  \item 3 mg/kg QW for at least six doses, followed by 6 mg/kg QW for at least six doses, followed by 10 mg/kg QW, as described in the protocol.
+\end{itemize}
+
+\subsection*{Cohort B2}
+\begin{itemize}
+  \item 3 mg/kg QW for at least six doses, followed by 6 mg/kg QW for at least six doses, followed by 10 mg/kg QW, as described in the protocol.
+\end{itemize}
+}
+```
+
+![](images/Schema.png)
+
+```{r, include=FALSE}
+#| echo: false
+#| message: false
+#| warning: false
+
+library(haven)
+library(labelled)
+library(here)
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(tidyverse)
+library(readr)
+library(knitr)
+library(reactable)
+library(htmltools)
+library(admiral)
+library(sdtm.oak)
+library(rtables)
+library(rtables.officer)
+library(tern)
+library(janitor)
+library(plotly)
+library(ggplot2)
+library(gt)
+library(gtsummary)
+library(flextable)
+library(huxtable)
+library(knitr)
+library(kableExtra)
+library(simplermarkdown)
+library(parseLatex)
+library(ggforce)
+library(patchwork)
+library(forcats)
+library(sjlabelled)
+library(boxr)
+
+source(paste0(here(), "/utils/utils.R"))
+box_auth()
+
+# EG Reference Ranges
+egrange <- read_excel(paste0(here(), "/documents/I1 Specs.xlsx"),
+                      sheet = "ADEG_RANGE")
+
+# VS Reference Ranges
+vsrange <- read_excel(paste0(here(), "/documents/I1 Specs.xlsx"),
+                      sheet = "ADVS_RANGE")
+
+# BM Visit Window
+bmwin <- read_excel(paste0(here(), "/documents/I1 Specs.xlsx"),
+                    sheet = "ADBM_Visit_Windows")
+
+# SOA
+soa <- read_csv(paste0(here(), "/data/SOA.csv")) |> convert_blanks_to_na()
+
+# IRT 
+irt <- read.csv(paste0(here(),"/data/", irt_current)) |> convert_blanks_to_na()
+
+# Demographic
+dm <- read_sas(paste0(here(),"/data/edc/dm.sas7bdat")) |> convert_blanks_to_na()
+
+# Enrollment
+enroll <- read_sas(paste0(here(),"/data/edc/enroll.sas7bdat")) |> convert_blanks_to_na()
+
+# Inclusion/Exclusion
+ie <- read_sas(paste0(here(),"/data/edc/ie.sas7bdat")) |> convert_blanks_to_na()
+
+# AE
+ae <- read_sas(paste0(here(), "/data/edc/ae.sas7bdat")) |> convert_blanks_to_na()
+
+# IRR
+irr <- read_sas(paste0(here(), "/data/edc/irr.sas7bdat")) |> convert_blanks_to_na()
+
+# Exposure
+ex <- bind_rows(read_sas(paste0(here(), "/data/edc/ex.sas7bdat")) |> 
+                          mutate(SOURCE = "EX"),
+                        read_sas(paste0(here(), "/data/edc/exiv1.sas7bdat")) |> 
+                          mutate(SOURCE = "EXIV1")) |> 
+  convert_blanks_to_na() |> 
+  filter(!is.na(EXDOSE)) |> 
+  mutate(FolderName = ifelse(grepl("Week 25", FolderName), "Week 25", FolderName),
+         FolderName = ifelse(FolderName %in% "Week", InstanceName, FolderName),
+         EXSTDAT = as.Date(EXSTDAT))
+
+# End of Study/Treatment
+eos <- read_sas(paste0(here(), "/data/edc/eos.sas7bdat")) |> 
+  convert_blanks_to_na() |> 
+  filter(!grepl("Week 25", FolderName) & 
+           !grepl("Screen Failure", DSDECODS) &
+           !is.na(DSDECODS)) |> 
+  rename("DSSTDAT1" = "DSSTDAT") |> 
+  distinct(Subject, DSSSTAT1, DSSTDAT1)
+  
+eot <- read_sas(paste0(here(), "/data/edc/eot.sas7bdat"))  |> convert_blanks_to_na() 
+
+# Vital Signs
+vs <- read_sas(paste0(here(),"/data/edc/vs.sas7bdat")) |> 
+  convert_blanks_to_na() |> 
+  mutate(VSDAT = as.Date(VSDAT))
+
+# Safety lab
+local_lab <- read_sas(paste0(here(), "/data/edc/lab.sas7bdat")) |>
+  mutate(`Local/Central` = "Local")
+
+central_lab <- read_csv(paste0(here(), "/data/mlm_dnli-i-0001_safety.csv"))
+
+# Protocol Deviation
+dv <- read_excel(paste0(here(),"/data/", pd_current)) |> 
+  rename(Important = "Significant/Important",
+         # Violation = "Marked as Violation (Siebel)",
+         Subject = "Subject #") 
+
+# ECG
+ecg <- read_sas(paste0(here(), "/data/edc/eg1.sas7bdat")) |> 
+  convert_blanks_to_na()
+
+# Conmed
+cm <- read_sas(paste0(here(), "/data/edc/cm.sas7bdat")) |> 
+  convert_blanks_to_na()
+
+# MH
+mh <- read_sas(paste0(here(), "/data/edc/mh.sas7bdat")) |> convert_blanks_to_na()
+
+# COA
+# EXCLUDED (efficacy): vin3 <- read_sas(paste0(here(), "/data/edc/vabs3.sas7bdat")) |> convert_blanks_to_na()
+
+# EXCLUDED (efficacy): bsi3 <- read_sas(paste0(here(), "/data/edc/bsidiii.sas7bdat")) |> convert_blanks_to_na()
+
+# EXCLUDED (efficacy): bsi4 <- read_sas(paste0(here(), "/data/edc/bsid.sas7bdat")) |> convert_blanks_to_na()
+
+# EXCLUDED (efficacy): kauf <- read_sas(paste0(here(), "/data/edc/kabc.sas7bdat")) |> convert_blanks_to_na()
+
+# ABR 
+abr <- read_sas(paste0(here(), "/data/edc/abr.sas7bdat")) |> convert_blanks_to_na()
+
+# Abdomen MRI
+vol <- read_sas(paste0(here(), "/data/Clario_DNLI_I_0001_Organ_Vol.sas7bdat")) |> 
+  convert_blanks_to_na()
+
+# Brain MRI
+brn <- read_sas(paste0(here(), "/data/CLARIO_DNLI_I_0001_vMRI.sas7bdat")) |> 
+  convert_blanks_to_na()
+
+# EXCLUDED (efficacy): # CSF HS
+# EXCLUDED (efficacy): csfhs <- read_csv(paste0(here(), "/data/frontage_dnli-i-0001_CSF_HS_DS.csv")) |>
+# EXCLUDED (efficacy):   convert_blanks_to_na()
+
+# Urine HS
+urhs <- read_csv(paste0(here(), "/data/frontage_dnli-i-0001_urine_hs_ds.csv")) |> 
+  convert_blanks_to_na()
+
+# Urine Creatinine
+urcrea <- read_csv(paste0(here(), "/data/frontage_dnli-i-0001_urine_creatinine.csv")) |> 
+  convert_blanks_to_na()
+
+# EXCLUDED (efficacy): # QS
+# EXCLUDED (efficacy): qs <- read_xpt(paste0(here(), "/data/", qs_current)) |> convert_blanks_to_na()
+
+# ADA
+ada <- read_csv(paste0(here(), "/data/bioagilytix_dnli-i-0001_ada.csv")) |> convert_blanks_to_na()
+
+# Disease Characteristics
+dc <- read_sas(paste0(here(), "/data/edc/dc1.sas7bdat")) |> convert_blanks_to_na()
+
+# Genotype
+geno <- read_csv(paste0(here(), "/data/ggc_dnli-i-0001_sgsh.csv")) |> convert_blanks_to_na()
+
+# Date of Visit
+dov <- read_sas(paste0(here(), "/data/edc/dov.sas7bdat")) |> convert_blanks_to_na()
+
+# Inclusion/Exclusion Criteria Description
+ie_desc <- read.csv(paste0(here(), "/data/IE_Description.csv")) |> 
+  convert_blanks_to_na() |> 
+  mutate(across(everything(), as.character))
+```
+
+```{r, include=FALSE}
+#| echo: false
+#| message: false
+#| warning: false
+
+# Fixing any Data Issues
+ex <- ex |> 
+  filter(EXDOSE %in% c(3, 6, 10))
+
+
+ex_EXSTDT <- ex |>
+  filter(EXOCCUR_STD == "Y") |>
+  mutate(EXSTDTC = paste0(EXSTDAT, "T", EXSTTIM),
+         TRTSDT = as.Date(EXSTDAT),
+         TRTSDTM = as.POSIXct(EXSTDTC, format = "%Y-%m-%dT%H:%M")
+         ) |>
+  arrange(Subject, TRTSDT, TRTSDTM) |> 
+  group_by(Subject) |>
+  slice_head() |>
+  ungroup() |> 
+  select(Subject, TRTSDT, TRTSDTM)
+
+vs <- vs |> 
+  left_join(ex_EXSTDT) 
+
+dov <- dov |> 
+  mutate(FolderName = ifelse(FolderName %in% "Week", InstanceName, FolderName))
+  
+```
+
+\newpage
+
+\tableofcontents
+
+```{=latex}
+\clearpage
+\setcounter{page}{1}
+\pagenumbering{arabic}
+```
+
+## Study Status
+
+### Cumulative Accrual Enrollment
+
+```{r }
+#| echo: false
+#| message: false
+#| warning: false
+cum <- enroll |> 
+  filter(!is.na(COHORT)) |> 
+  mutate(DSSTDAT = as.Date(DSSTDAT, format = "%d%b%Y:%H:%M:%S.%OS"),
+         EnrollMonth = format(DSSTDAT, "%Y-%m"),
+         Q = case_when(DSSTDAT_MM <= 3 ~ "Q1",
+                       DSSTDAT_MM > 3 &  DSSTDAT_MM <= 6 ~ "Q2",
+                       DSSTDAT_MM > 6 &  DSSTDAT_MM <= 9 ~ "Q3",
+                       DSSTDAT_MM > 9 ~ "Q4",
+                       TRUE ~ "ND"),
+         QUARTER = paste0(as.character(DSSTDAT_YYYY), "-", Q)
+         ) |> 
+  arrange(QUARTER )
+
+
+# Count unique subjects per Site per Month
+quarter_enroll <- cum |>
+  group_by(Site, QUARTER) |>
+  summarise(N = n_distinct(Subject), .groups = "drop") |> 
+  ungroup()
+
+# Complete missing months per site with 0
+quarter_enroll <- quarter_enroll |>
+  tidyr::complete(Site, QUARTER, fill = list(N = 0)) |>
+  arrange(Site, QUARTER) |> 
+  left_join(cum |>
+              distinct(Site, SiteNumber))
+
+# Calculate cumulative sum per site
+quarter_cumulative <- quarter_enroll |>
+  group_by(Site) |>
+  mutate(CumulativeN = cumsum(N)) |>
+  ungroup() |> 
+  mutate(SiteNumber = as.character(SiteNumber))
+
+# Pivot to wide format for reporting
+cumulative_table <- quarter_cumulative |>
+  select(Site, SiteNumber, QUARTER, N) |>
+  pivot_wider(names_from = QUARTER, values_from = N, values_fill = 0) |>
+  group_by(Site) |> 
+  mutate(`Total` = sum(c_across(where(is.numeric)), na.rm = TRUE)) |> 
+  ungroup() |> 
+  arrange(desc(`Total`))
+```
+
+```{r ft.align = "left"}
+#| echo: false
+#| message: false
+#| warning: false
+
+kable(cumulative_table,
+      align = rep("c", ncol(cumulative_table))) |> 
+  row_spec(0,bold=TRUE) |> 
+  kable_styling(font_size = 9, latex_options = "striped") |> 
+  column_spec(1, width = "3cm")
+```
+
+\vspace{0.5cm}
+
+### Participant Disposition
+
+```{r }
+#| echo: false
+#| message: false
+#| warning: false
+
+dsole <- ex |> 
+  filter(EXOCCUR == "Yes" & parse_number(InstanceName)> 25 & parse_number(InstanceName)< 97) |> 
+  distinct(Subject) |> 
+  mutate(DSOLE = "Yes")
+
+dslte <- ex |> 
+  filter(EXOCCUR == "Yes" & parse_number(InstanceName)> 97) |> 
+  distinct(Subject) |> 
+  mutate(DSLTE = "Yes")
+
+irt1 <- irt |> 
+  select(COHORT, Subject = PATID, VISDAT, Status = SUBSTA) |> 
+  mutate(VISDAT = as.Date(VISDAT, format = "%d-%b-%Y")) |> 
+  distinct() |> 
+  arrange(COHORT, Subject, VISDAT) |> 
+  group_by(COHORT, Subject) |> 
+  slice_tail(n =1) |> 
+  ungroup()
+
+scr <- dm |>
+  inner_join(irt1 |> 
+              select(COHORT, Subject, Status) |> 
+              mutate(Status = case_when(Status == "Screen Failed" ~ "Screen Failure",
+                                        Status %in% c("Screened", "Rescreened") ~ "In Screening",
+                                        Status == "Enrolled" ~ "Eligible",
+                                        TRUE ~ "Other"),
+                     USUBJID = Subject
+                     )
+            ) |> 
+  left_join(eot |> select(Subject, DSSSTAT, DSSTDAT))  |>  
+  left_join(eos) |> 
+  left_join(dsole) |> 
+  left_join(dslte) |> 
+  left_join(ex_EXSTDT |> select(Subject, TRTSDT)) |> 
+  left_join(enroll |> select(Subject, COHORT1 = COHORT)) |> 
+  mutate(COHORT = ifelse(is.na(COHORT), COHORT1, COHORT),
+         Status = ifelse(Status %in% "In Screening" & !is.na(TRTSDT), "Eligible", Status),
+         Status = factor(Status, levels = c("In Screening",
+                                            "Screen Failure",
+                                            "Eligible",
+                                            "Other ")
+                                     ),
+         Current = case_when(DSLTE %in% "Yes" ~ "Long Term Extension",
+                             DSOLE %in% "Yes" ~ "Open-Label Extension",
+                             Status %in% "Eligible" ~ "Core Study",
+                             TRUE ~ NA_character_)
+         ) 
+
+#BRTHDT
+scr <- scr |> 
+  mutate(BRTHDT = as.Date(RFICDAT) %m-% months(AGEM) |>
+           rollbackward(roll_to_first = TRUE))
+   
+safflds <- scr |> # Safety Population
+  filter(!is.na(TRTSDT)) |> 
+  distinct(COHORT, Subject, USUBJID)
+
+cohfact <- distinct(safflds, COHORT) |> arrange(COHORT) |> pull()
+
+# Initialize summary list
+summary_rows <- list()
+
+# Screening Status categories
+screening_values <- c("In Screening", "Screen Failure", "Eligible", "Other")
+for (val in screening_values) {
+  summary_rows[[length(summary_rows)+1]] <- list(
+    Category = "Screening Status",
+    Subcategory = val,
+    Total = sum(scr$Status == val, na.rm = TRUE)
+  )
+}
+
+# Enrollment Status
+summary_rows[[length(summary_rows)+1]] <- list(
+  Category = "Enrollment Status",
+  Subcategory = "Pending Enrolment",
+  Total = sum(scr$Status == "Eligible" & is.na(scr$COHORT))
+)
+
+summary_rows[[length(summary_rows)+1]] <- list(
+  Category = "Enrollment Status",
+  Subcategory = "Enrolled",
+  Total = sum(scr$Status == "Eligible" & !is.na(scr$COHORT))
+)
+
+# Early Termination Prior to Treatment
+summary_rows[[length(summary_rows)+1]] <- list(
+  Category = "Early Termination Prior to Treatment",
+  Subcategory = "",
+  Total = sum(scr$Status == "Eligible" & scr$DSSSTAT == "Early discontinued from treatment", na.rm = TRUE)
+)
+
+# Treatment Initiated
+summary_rows[[length(summary_rows)+1]] <- list(
+  Category = "Treatment Initiated",
+  Subcategory = "",
+  Total = sum(!is.na(scr$TRTSDT))
+)
+
+# Active on/off study drug
+active_on <- sum(!is.na(scr$TRTSDT) & 
+                   !(!is.na(scr$DSSSTAT) & 
+                       scr$DSSSTAT == "Early discontinued from treatment"), 
+                 na.rm = TRUE)
+active_off <- sum(!is.na(scr$TRTSDT)) - active_on
+
+summary_rows[[length(summary_rows)+1]] <- list(
+  Category = "Participants Treated",
+  Subcategory = "Active on study drug",
+  Total = active_on
+)
+summary_rows[[length(summary_rows)+1]] <- list(
+  Category = "Participants Treated",
+  Subcategory = "Active off study drug",
+  Total = active_off
+)
+
+# Consented for OLE
+summary_rows[[length(summary_rows)+1]] <- list(
+  Category = "Consented for Open-Label Extension",
+  Subcategory = "",
+  Total = sum(scr$DSOLE == "Yes", na.rm = TRUE)
+)
+
+# Consented for OLE
+summary_rows[[length(summary_rows)+1]] <- list(
+  Category = "Consented for Long Term Extension",
+  Subcategory = "",
+  Total = sum(scr$DSLTE == "Yes", na.rm = TRUE)
+)
+
+# Convert to data frame
+summary_df <- bind_rows(summary_rows) |> distinct()
+
+sstat <- bind_rows(data.frame("Subcategory" = "Screening Status", "Total" = NA),
+                    summary_df |> 
+                     filter(Category %in% "Screening Status") |> 
+                     select(Subcategory, Total) |> 
+                     mutate(Subcategory = paste0("  ", Subcategory)))
+estat <- bind_rows(data.frame("Subcategory" = "Enrollment Status", "Total" = NA),
+                    summary_df |> 
+                     filter(Category %in% "Enrollment Status") |> 
+                     select(Subcategory, Total) |> 
+                     mutate(Subcategory = paste0("  ", Subcategory)))
+eter <- summary_df |> filter(Category %in% "Early Termination Prior to Treatment") |> 
+  select(Subcategory = Category, Total)
+tint <- summary_df |> filter(Category %in% "Treatment Initiated") |> 
+  select(Subcategory = Category, Total)
+act <- bind_rows(data.frame("Subcategory" = "Participants Treated", "Total" = NA),
+                    summary_df |> 
+                     filter(Category %in% "Participants Treated") |> 
+                     select(Subcategory, Total) |> 
+                     mutate(Subcategory = paste0("  ", Subcategory)))
+consol <- summary_df |> filter(Category %in% "Consented for Open-Label Extension") |> 
+  select(Subcategory = Category, Total)
+conslt <- summary_df |> filter(Category %in% "Consented for Long Term Extension") |> 
+  select(Subcategory = Category, Total)
+
+summary_df1 <- bind_rows(sstat, estat, eter, tint, act, consol, conslt) |> 
+  rename("Study Status" = "Subcategory") |> 
+  mutate(Total = as.character(Total),
+         Total = ifelse(is.na(Total), "", Total))
+
+summary_df1[[1]] <- style_latex_indent_or_bold(summary_df1[[1]])
+
+colnames(summary_df1) <- paste0("\\textbf{", colnames(summary_df1), "}")
+```
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+summary_df1 %>%
+  kable(booktabs = TRUE,
+        format = "latex",
+        escape = FALSE,
+        col.names = names(.),
+        align = paste0("l", strrep("c", ncol(.) - 1))) %>%
+  kable_styling(latex_options = c("hold_position", "striped"),
+                full_width = FALSE,
+                font_size = 10)
+```
+
+\vspace{0.5cm}
+
+\newpage
+
+```{=latex}
+\blandscape
+```
+
+### Screen Failures
+
+```{r }
+#| echo: false
+#| message: false
+#| warning: false
+sf <- scr |> 
+  filter(Status == "Screen Failure") |> 
+  left_join(ie |>
+              mutate(PV = ifelse(!is.na(CURPRTV), paste0("PV", CURPRTV), NA_character_),
+                     CURPRTV = as.character(CURPRTV),
+                     IECAT = ifelse(!is.na(IECAT_STD) & !is.na(PV), 
+                                    paste(PV, IECAT_STD, paste0("#", IETESTCD)), 
+                                    NA_character_),
+                     IETESTCD = as.character(IETESTCD)) |> 
+              filter(!is.na(IECAT)) |> 
+              left_join(ie_desc, by = c("CURPRTV", "IECAT_STD", "IETESTCD")) |> 
+              select(Subject, IECAT, Description), 
+            by = "Subject") |> 
+  mutate(`Age at screening (Y:M)` = str_c(AGE, ":", AGEM-(AGE*12)),
+         Country = "USA",
+         IECAT = ifelse(is.na(IECAT), "", IECAT)) |>
+  select(`Participant ID` = Subject, Country, `Age at screening (Y:M)`, `Reason for Screen Failure` = IECAT, `Abbreviated Description` = Description)
+```
+
+```{r }
+#| echo: false
+#| message: false
+#| warning: false
+
+kable(sf, 
+      align = rep("c", ncol(sf))) |>
+  row_spec(0,bold=TRUE) |>
+  kable_styling(font_size = 9, latex_options = "striped") |> 
+  column_spec(5, width = "6cm")
+```
+
+### Participant Status in Study
+
+```{r }
+#| echo: false
+#| message: false
+#| warning: false
+
+ds <- scr |> 
+  filter(!is.na(Current)) |> 
+  arrange(COHORT, Subject) |> 
+  select(Cohort = COHORT, `Participant ID` = Subject, Site, `Current Status` = Current) 
+```
+
+```{r }
+#| echo: false
+#| message: false
+#| warning: false
+
+kable(ds) |>
+  row_spec(0,bold=TRUE) |>
+  kable_styling(font_size = 9, latex_options = "striped") |> 
+  footnote(general = "Study Milestones: Core Study, Open-label Extension, Long Term Extension")
+```
+
+\newpage
+
+## Baseline Characteristics
+
+### Demographics of All Enrolled Participants
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+height <- vs |> 
+  select(Subject, HEIGHT, VSDAT, TRTSDT) |> 
+  filter(!is.na(HEIGHT) & !is.na(VSDAT) & VSDAT <= TRTSDT) |>
+  arrange(Subject, desc(VSDAT)) |> 
+  group_by(Subject) |> 
+  slice(1) |> 
+  ungroup() |> 
+  select(Subject, HEIGHT)
+
+
+weight <- vs |> 
+  select(Subject, WEIGHT, VSDAT, TRTSDT) |> 
+  filter(!is.na(WEIGHT) & !is.na(VSDAT) & VSDAT <= TRTSDT) |>
+  arrange(Subject, desc(VSDAT)) |> 
+  group_by(Subject) |> 
+  slice(1) |> 
+  ungroup() |> 
+  select(Subject, WEIGHT)
+
+bmi <- vs |> 
+  select(Subject, BMI, VSDAT, TRTSDT) |> 
+  filter(!is.na(BMI) & !is.na(VSDAT) & VSDAT <= TRTSDT) |>
+  arrange(Subject, desc(VSDAT)) |> 
+  group_by(Subject) |> 
+  slice(1) |> 
+  ungroup() |> 
+  select(Subject, BMI) |> 
+  mutate(BMI = round_half_up(BMI, 1))
+  
+demog <- scr |>
+  filter(!is.na(TRTSDT))  |> 
+  mutate(
+    # Count number of race flags selected (excluding RAW and RACEOTH)
+    race_flags = rowSums(across(starts_with("RACE") & 
+                                  !ends_with("_RAW") & 
+                                  !matches("RACEOTH")), na.rm = TRUE),
+    
+    # Create final RACE variable based on flags and RACEOTH
+    RACE = case_when(
+      race_flags > 1 ~ "Multiple",
+      RACE1 == 1 ~ "American Indian or Alaska Native",
+      RACE2 == 1 ~ "Asian",
+      RACE3 == 1 ~ "Black or African American",
+      RACE4 == 1 ~ "Native Hawaiian or Other Pacific Islander",
+      RACE5 == 1 ~ "White",
+      RACE6 == 1 ~ "Not Reported",
+      RACE7 == 1 ~ "Unknown",
+      !is.na(RACEOTH) & RACEOTH != "" ~ "Other",
+      TRUE ~ NA_character_
+    )
+  )  |> 
+  select(-race_flags) |> 
+  mutate(SEX = ifelse(!is.na(SEX), SEX, "Unknown"),
+         SEX = factor(SEX, levels = c("Female", "Male", "Unknown")),
+         RACE = factor(RACE, levels = c("American Indian or Alaska Native", 
+                                            "Asian", 
+                                            "Black or African American", 
+                                            "Native Hawaiian or Other Pacific Islander", 
+                                            "White",
+                                            "Unknown")),
+         ETHNIC = factor(ETHNIC, levels = c("Hispanic or Latino",
+                                            "Not Hispanic or Latino",
+                                            "Not Reported",
+                                            "Unknown"))
+         ) |> 
+  left_join(height) |> 
+  left_join(weight) |> 
+  left_join(bmi) |> 
+  select(Subject, COHORT, AGEM, SEX, ETHNIC, RACE, HEIGHT, WEIGHT, BMI)
+
+demog <- demog |>
+  mutate(
+    COHORT = factor(COHORT, levels = c("Cohort A1", "Cohort A2", "Cohort A3", "Cohort B1"))
+  )
+
+vars <- c(
+    AGEM = "Age (months)", 
+    SEX = "Sex (n, %)",
+    RACE = "Race (n, %)",
+    ETHNIC = "Ethnicity (n, %)",
+    HEIGHT = "Height (cm)",
+    WEIGHT = "Weight (kg)",
+    BMI = paste0("BMI (kg/m", "\u00B2", ")")
+  )
+
+demogtab <- 
+  basic_table(show_colcounts = TRUE) |>
+  split_cols_by(var = "COHORT") |>
+  add_overall_col(label = "All Cohorts") |> 
+  analyze_vars(
+    vars = names(vars),
+    var_labels = vars, 
+    na_str = ""
+  ) |>
+  build_table(demog) |> 
+  trim_rows()
+
+
+demogtab %>%
+  tt_to_df1()  %>%  
+  mutate(across(1, ~str_replace_all(., "%", "\\\\%"))) %>%
+  mutate(across(everything(), trimws)) %>%
+  kable(booktabs = TRUE,
+        escape = FALSE,
+        col.names = names(.),
+        align = paste0("l", strrep("c", ncol(.) - 1))
+        )
+```
+
+\newpage
+
+### Disease Baseline Characteristics of All Treated Participants (Study Specific Assessments)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+# S298P+, S298P-
+pheno <- geno |> 
+  select(Subject = SUBJID, AACID, LBDAT) |> 
+  group_by(Subject, LBDAT) |> 
+  summarise(VAL = paste(AACID, collapse = "|"), .groups = "drop") |> 
+  mutate(VAL = ifelse(grepl("ser298pro", VAL, ignore.case = TRUE), "S298P+", "S298P-"),
+         TEST = "Mutation (S298P+/S298P-)",
+         DAT = as.Date(LBDAT, format = "%d-%b-%Y"),
+         VISIT = "Baseline"
+         ) |> 
+  select(Subject, VISIT, DAT, TEST, VAL)
+
+# Hearing Aide
+hear <- abr |> 
+  mutate(DAT = as.Date(ABRDAT),
+         VISIT = FolderName,
+         VAL = ABRAIDYN,
+         TEST = "Hearing Aid Use") |> 
+  distinct(Subject, VISIT, DAT, TEST, VAL) |> 
+  filter(VISIT %in% "Baseline")
+
+# ADA Status
+ada_stat <- ada |> 
+  select(Subject = SUBJID, VISIT, DAT = LBDAT, VAL = LBORRESC) |> 
+  mutate(DAT = as.Date(DAT),
+         TEST = "ADA Screen Result") |> 
+  filter(!grepl("Unscheduled", VISIT, ignore.case = TRUE))
+
+# EXCLUDED (efficacy): CSF HS processing block removed
+
+# URHS
+urhs_vals <- urhs |> 
+  mutate(LBLLOQ = as.numeric(LBLLOQ),
+         LBORRES1 = ifelse(is.character(urhs$LBORRES) & LBORRES == "BQL",
+                          as.character(0.5*LBLLOQ),
+                          LBORRES),
+         LBORRES = as.numeric(LBORRES1),
+         DAT = as.Date(LBDAT),
+         TEST = paste0("Urine ", LBTEST, " (", LBORRESU, ")"),
+         VISIT = ifelse(grepl("Week 25", VISIT), "Week 25", VISIT)) |> 
+  rename(Subject = SUBJID) |> 
+  group_by(Subject, VISIT, DAT, TEST) |> 
+  summarise(VAL = sum(LBORRES)) |> 
+  ungroup() |> 
+  left_join(urcrea |> 
+              select(Subject = SUBJID, VISIT, CREAT = LBORRES) |> 
+              mutate(VISIT = ifelse(grepl("Week 25", VISIT), "Week 25", VISIT))) |> 
+  mutate(VAL = VAL/CREAT, 
+         TEST = str_replace(TEST, "ng/mL", "ng/ug Creatinine")) |> 
+  select(Subject, VISIT, DAT, TEST, VAL)
+
+# Abdominal Volume
+vol_vals <- vol |> 
+  left_join(scr |> select(SUBJID = Subject, BRTHDT)) |>
+  mutate(Subject = SUBJID, 
+         TEST = MOTEST,
+         MOORRES = as.numeric(MOORRES),
+         DAT = as.Date(MODTC, format = "%d-%b-%Y"),
+         VISIT = ifelse(grepl("Week 25", VISIT), "Week 25", VISIT),
+         AGEASS = (DAT - BRTHDT +1)/30.4375) |> 
+  left_join(height) |> 
+  left_join(weight) |> 
+  mutate(
+    expvol = case_when(TEST == "Liver Volume" & AGEASS <= 12 ~ -143.06 + 4.27*HEIGHT + 14.79*WEIGHT,
+                       TEST == "Liver Volume" & !(AGEASS <= 12) ~ -20.25 + (3.34 * HEIGHT) + (13.11 * WEIGHT),
+                       TEST == "Spleen Volume" ~ 0.7 + (4.6 * WEIGHT),
+                       TRUE ~ NA_real_),
+    vub = MOORRES/expvol,
+    VAL = round_half_up(vub, digits = 2),
+    TEST = paste0(TEST, " MN")
+  ) |> 
+  select(Subject, VISIT, DAT, TEST, VAL) |> 
+  mutate(VISIT =ifelse(grepl("Baseline", VISIT), "Baseline", VISIT))
+
+# Brain MRI
+brn_vals <- brn |> 
+   mutate(Subject = SUBJID, 
+         TEST = paste0(NVLAT, "-", NVLOC, "-", NVTEST),
+         TEST = ifelse(!is.na(NVUNIT), paste0(TEST, " (", NVUNIT, ")"), TEST),
+         VAL = as.numeric(NVRESULT),
+         DAT = as.Date(NVDAT, format = "%Y-%m-%d"),
+         VISIT = ifelse(grepl("Week 25", VISIT), "Week 25", VISIT)) |> 
+  distinct(Subject, VISIT, DAT, TEST, VAL)
+
+# ABR
+abrlab <- get_label(abr) |> 
+  as.data.frame() |> 
+  rownames_to_column(var = "TESTCD")
+
+names(abrlab) <- c("TESTCD", "TEST")
+
+
+abr_vals <- abr |> 
+  select(Subject, VISIT = FolderName, DAT = ABRDAT, ABREAR,
+         ABRR2, ABRR3, ABRR4, ABRR5, ABRR14, ABRR15, ABRR16, ABRR17,
+         ABRR6, ABRR18, ABRR7, ABRR19, ABRR8, ABRR20, ABRR9, ABRR21,
+         ABRSP, ABRAIDYN, ABRAIDL, ABRAIDR
+         ) |> 
+  mutate(across(c(ABRR2, ABRR3, ABRR4, ABRR5, ABRR14, ABRR15, 
+                        ABRR16, ABRR17, ABRR6, ABRR18, ABRR7, ABRR19, 
+                        ABRR8, ABRR20, ABRR9, ABRR21, ABRSP, ABRAIDYN, 
+                        ABRAIDL, ABRAIDR),
+                as.numeric)) |> 
+  pivot_longer(cols = c(ABRR2, ABRR3, ABRR4, ABRR5, ABRR14, ABRR15, 
+                        ABRR16, ABRR17, ABRR6, ABRR18, ABRR7, ABRR19, 
+                        ABRR8, ABRR20, ABRR9, ABRR21, ABRSP, ABRAIDYN, 
+                        ABRAIDL, ABRAIDR),
+               names_to = "TESTCD", 
+               values_to = "VAL") |> 
+  filter(!is.na(VAL)) |> 
+  left_join(abrlab) |> 
+  mutate(TEST = trimws(paste0(TEST, " (", ABREAR, ")")),
+         DAT = as.Date(DAT)) |> 
+  select(-ABREAR, -TESTCD)
+  
+
+# EXCLUDED (efficacy): QS/COA processing block removed
+# (KABC, VABS-III, BSID III/IV scores not included in safety report)
+testvals_cont <- bind_rows(
+  csfhs_vals,
+  urhs_vals,
+  vol_vals,
+  brn_vals,
+  abr_vals,
+  kabc_vals,
+  vin3abrs8_vals,
+  vin3abc_vals,
+  b3C_raw_vals,
+  b3EC_raw_vals,
+  b3RC_raw_vals,
+  b3GM_raw_vals,
+  b3FM_raw_vals,
+  b4C_raw_vals,
+  b4EC_raw_vals,
+  b4RC_raw_vals,
+  b4GM_raw_vals,
+  b4FM_raw_vals
+) |> 
+  mutate(VAL = round_half_up(VAL, 1)) |> 
+  left_join(safflds) |> 
+  mutate(across(where(is.character), trimws)) |> 
+  filter(!is.na(COHORT)) |> 
+  left_join(ex |> distinct(Subject, InstanceName, EXSTDAT),
+            by = c("Subject", "DAT" = "EXSTDAT")) |> 
+  left_join(ex_EXSTDT) |>
+  mutate(UNSC = ifelse(grepl("unschedu", VISIT, ignore.case = TRUE), "Y", NA_character_),
+         VISIT = ifelse(grepl("unschedu", VISIT, ignore.case = TRUE), InstanceName, VISIT),
+         DT = DAT) |> 
+  derive_vars_dy(TRTSDT, exprs(DT)) |> 
+  mutate(VISIT1 = paste0("Week ", ceiling(DY/7)),
+         VISIT =  ifelse(is.na(VISIT), VISIT1, VISIT)) |>
+  select(-InstanceName, -VISIT1)
+  
+testvals_cont_base <- testvals_cont |> 
+  left_join(ex_EXSTDT) |> 
+  filter(DAT <= TRTSDT) |> 
+  arrange(TEST, Subject, TRTSDT, DAT) |> 
+  group_by(TEST, Subject) |> 
+  slice_tail() |> 
+  ungroup() |> 
+  select(COHORT, Subject, TEST, VAL) |> 
+  pivot_wider(names_from = TEST, values_from = VAL) |> 
+  rename(Cohort = COHORT)
+
+testvals_cat <- bind_rows(
+  pheno, 
+  hear, 
+  ada_stat
+  ) |> 
+  left_join(safflds) |> 
+  mutate(across(where(is.character), trimws)) |> 
+  filter(!is.na(COHORT))
+
+testvals_cat_base <- testvals_cat |> 
+  left_join(ex_EXSTDT) |> 
+  filter(DAT <= TRTSDT) |> 
+  arrange(TEST, Subject, TRTSDT, DAT) |> 
+  group_by(TEST, Subject) |> 
+  slice_tail() |> 
+  ungroup() |> 
+  select(COHORT, Subject, TEST, VAL) |> 
+  pivot_wider(names_from = TEST, values_from = VAL) |> 
+  rename(Cohort = COHORT)
+
+testvals_base <- testvals_cont_base |> 
+  left_join(testvals_cat_base) |> 
+  mutate(USUBJID = Subject)
+```
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+testvals_base <- testvals_base |> 
+  mutate(Cohort = factor(Cohort, levels = cohfact),
+         "Mutation (S298P+/S298P-)" = as.factor(`Mutation (S298P+/S298P-)`),
+         "Hearing Aid Use" = as.factor(`Hearing Aid Use`),
+         "ADA Screen Result" = as.factor(`ADA Screen Result`)
+         )
+
+vars <- c(
+  "Mutation (S298P+/S298P-)",
+  "Hearing Aid Use",
+  "ADA Screen Result",
+  "CSF Heparan Sulfate (ng/mL)", "CSF Dermatan Sulfate (ng/mL)", 
+  "Urine Heparan Sulfate (ng/ug Creatinine)", "Urine Dermatan Sulfate (ng/ug Creatinine)",
+  "Liver Volume MN", "Spleen Volume MN",
+  "Vineland 3 ABC", "Vineland 3 ABRS8",
+  "BSID III Cognitive Raw Score", "BSID III Expressive Communication Raw Score", 
+  "BSID III Receptive Communication Raw Score",
+  "BSID III Fine Motor Raw Score", "BSID III Gross Motor Raw Score", 
+  "BSID IV Cognitive Raw Score", "BSID IV Expressive Communication Raw Score", 
+  "BSID IV Receptive Communication Raw Score", 
+  "BSID IV Fine Motor Raw Score", "BSID IV Gross Motor Raw Score"
+)
+
+tbl <- basic_table(show_colcounts = TRUE) |>
+  split_cols_by(var = "Cohort") |>
+  add_overall_col(label = "All Cohorts") |> 
+  analyze_vars(
+    vars = vars,
+    var_labels = vars,
+    na_str = ""
+  ) |>
+  build_table(testvals_base)
+
+tbl %>%
+  tt_to_df1()  %>%  
+  mutate(across(everything(), ~ ifelse(is.na(.), "0", as.character(.)))) %>%
+  mutate(across(1, ~str_replace_all(., "%", "\\\\%"))) %>%
+  mutate(across(everything(), trimws)) %>%
+  kable(booktabs = TRUE,
+        escape = FALSE,
+        col.names = names(.),
+        align = paste0("l", strrep("c", ncol(.) - 1))
+        )
+```
+
+\newpage
+
+## Study Conduct
+
+### Completion of Scheduled Dosing
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+allvis <- dov |> 
+  filter(!grepl("Unscheduled", FolderName) & Subject %in% safflds$Subject) |> 
+  distinct(Subject, FolderName, VISYN, VIRSN) |>
+  rename(VISIT = FolderName) |> 
+  mutate(VISIT = ifelse(grepl("Week 25", VISIT), "Week 25", VISIT),
+         VISITNUM = parse_number(VISIT),
+         VISITNUM = case_when(VISIT == "Screening" ~ -1,
+                            VISIT == "Baseline" ~ 0,
+                            TRUE ~ VISITNUM))
+
+exvis <- ex |> 
+  mutate(EXSTTIM = str_pad(EXSTTIM, width = 5, side = "left", pad = "0"),
+         EXSTTIM = ifelse(!is.na(EXSTTIM), paste0(EXSTTIM, ":00"), NA_character_),
+         EXSTDTC = paste0(EXSTDAT, "T", EXSTTIM),
+         EXENDTC = paste0(EXENDAT, "T", EXENTIM),
+         EXSTDT = as.Date(EXSTDTC, format = "%Y-%m-%dT%H:%M"),
+         EXENDT = as.Date(EXENDTC, format = "%Y-%m-%dT%H:%M")) |>  
+  arrange(Subject, EXSTDTC, EXENDTC) |> 
+  group_by(Subject) |> 
+  mutate(
+    TRTSDT = ifelse(row_number() == 1, EXSTDT, NA),
+    TRTEDT = ifelse(row_number() == n(), EXENDT, NA),
+    TRTSDT = as.Date(TRTSDT),
+    TRTEDT = as.Date(TRTEDT)
+    ) |> 
+  fill(TRTSDT, .direction = "down") |> 
+  fill(TRTEDT, .direction = "up") |> 
+  ungroup() |> 
+  derive_vars_duration(new_var = TRTDUR, new_var_unit = TRTDURU, start_date = TRTSDT, end_date = TRTEDT, in_unit = "d", out_unit = "w") |> 
+  distinct(Subject, FolderName, EXSTDT, EXSTDTC, EXDOSE, TRTDUR) |> 
+  rename(VISIT = FolderName) |> 
+  mutate(VISIT = ifelse(grepl("Week 25", VISIT), "Week 25", VISIT),
+         VISITNUM = parse_number(VISIT),
+         VISITNUM = case_when(VISIT == "Screening" ~ -1,
+                            VISIT == "Baseline" ~ 0,
+                            TRUE ~ VISITNUM))
+
+exvis <- allvis |> 
+  filter(!VISIT %in% c("Baseline", "Screening", "ITI Baseline", "ITI Screening")) |> 
+  left_join(exvis) |> 
+  arrange(Subject, VISITNUM, VISIT) |> 
+  mutate(EXDOSE1 = EXDOSE) |> 
+  group_by(Subject) |> 
+  mutate(lagvis = lag(VISITNUM)) |> 
+  fill(EXDOSE1, .direction = "down") |> 
+  fill(TRTDUR, .direction = "down") |> 
+  ungroup() |> 
+  mutate(EXDOSE1 = paste(EXDOSE1, "mg/kg"),
+         EXDOSE1 = ifelse(is.na(VIRSN) | VIRSN %in% "Not required by protocol", 
+                          EXDOSE1,
+                          paste0("Skipped (", VIRSN, ")")),
+         EXDOSE1 = ifelse(grepl("EOS", VISIT), "Discontinued", EXDOSE1),
+         VISITNUM = ifelse(is.na(VISITNUM) & !is.na(lagvis), lagvis + 1, VISITNUM)
+         ) |> 
+  select(-lagvis) |> 
+  left_join(safflds) |> 
+  arrange(COHORT, desc(TRTDUR), Subject, VISITNUM) |> 
+  mutate(
+    COHORT = factor(COHORT, levels = cohfact),
+    EXDOSE1 = factor(EXDOSE1, levels = c("3 mg/kg", "6 mg/kg", "10 mg/kg", 
+                                         "Skipped (Adverse Event)", "Skipped (Other)",
+                                         "Discontinued"))
+         ) |> 
+  group_by(COHORT) |>
+  mutate(Subject = fct_reorder(Subject, -desc(TRTDUR))) |>
+  ungroup()
+```
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+excomp <- 
+exvis |>
+  ggplot(aes(y=Subject, group = Subject)) +
+  geom_line(aes(x= VISITNUM, col = EXDOSE1), size = 5) +
+  geom_point(aes(x = VISITNUM, color = EXDOSE1), shape = 15, size = 5) +
+  facet_wrap(~ COHORT, ncol = 1, strip.position = "left", scales = "free_y")+
+  theme_bw() +
+  scale_color_manual(
+    name = "Dosed/Skipped/Discontinued",
+    breaks = c(
+      "3 mg/kg" ,  
+      "6 mg/kg" ,  
+      "10 mg/kg",
+      "Skipped (Adverse Event)",
+      "Skipped (Other)",
+      "Discontinued"
+    ),
+    values = c(
+      "3 mg/kg" = "#1f78b4",  
+      "6 mg/kg" = "#b28ccf",  
+      "10 mg/kg" = "#33a02c",
+      "Skipped (Adverse Event)" = "darkgray",
+      "Skipped (Other)"     = "black",
+      "Discontinued" = "red"
+    )
+  ) +
+  scale_x_continuous(
+    breaks = c(1, 13, 25, 49, 97),
+    limits = c(1, 97),
+    labels = c("Week 1", "Week 13", "Week 25", "Week 49", "Week 97")
+  ) +
+  theme(
+    axis.title.x = element_text(face = "bold", size = 14),
+    axis.title.y = element_blank(),
+    axis.text.x = element_text(face = "bold", size = 12),
+    axis.text.y = element_text(face = "bold", size = 12),
+    
+    strip.text = element_text(face = "bold", size = 12),
+    strip.placement = "outside",
+    strip.background = element_blank(),
+    
+    legend.title = element_text(face = "bold", size = 12),
+    legend.text  = element_text(size = 12),
+    
+    legend.position = c(.95, 0),   # (x, y) in normalized plot coordinates
+    legend.justification = c("right", "bottom"),
+    legend.background = element_rect(fill = "white", color = "black")
+    ) +
+  labs(x = "Visit")
+
+excomp
+```
+
+\newpage
+
+### Availability of Planned Key Assessments (Data available at the time of extraction)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+comp <- function(df, title, params){
+  soa_df <- soa |> 
+    filter(TITLE %in% title) |> 
+    distinct(COHORT, VISIT, VISITNUM) |> 
+    inner_join(safflds) |> 
+    mutate(SOA = "Y")
+  
+  catvis_unsc <- df |> 
+    filter(TEST %in% params & !is.na(UNSC)) |>
+    distinct(COHORT, Subject, VISIT, UNSC)
+  
+  catvis <- df |> # Getting the PARAM data
+    filter(TEST %in% params) |>
+    distinct(COHORT, VISIT, Subject) |> 
+    mutate(ASSESSED = "Assessed",
+           VISITNUM = parse_number(VISIT),
+           VISITNUM = case_when(VISIT == "Screening" ~ -1,
+                                VISIT == "Baseline" ~ 0,
+                                TRUE ~ VISITNUM)) |> 
+    arrange(COHORT, Subject, VISITNUM) |> 
+    left_join(catvis_unsc, by = c("COHORT", "Subject", "VISIT")) |> 
+    mutate(ASSESSED = ifelse(!is.na(UNSC), "Unscheduled", ASSESSED)) |> 
+    select(-UNSC)
+  
+  exvis_max <- exvis |> 
+    filter(VISYN == "Yes") |> 
+    distinct(COHORT, Subject, VISITNUM, VISIT) |> 
+    group_by(COHORT, Subject) |>
+    summarise(maxvis = max(VISITNUM, na.rm = TRUE), .groups = "drop")
+  
+  soa_df <- soa_df |> 
+    left_join(exvis_max, by = c("COHORT", "Subject")) |>
+    filter(VISITNUM <= maxvis) |> 
+    distinct(COHORT, Subject, VISITNUM, VISIT) 
+  
+  
+  catvis <- catvis |> 
+      full_join(soa_df, by = c("COHORT", "Subject", "VISITNUM", "VISIT")) |> 
+      arrange(COHORT, Subject, VISITNUM, VISIT) |> 
+      mutate(ASSESSED = ifelse(is.na(ASSESSED), "Not Available", ASSESSED))
+  
+  if(title %in% c("BSID III")){
+    catvis <- catvis |>
+      mutate(ASSESSED = ifelse(COHORT %in% "Cohort A1" & VISIT %in% c("Baseline", "Week 25"),
+                               "Exclude", ASSESSED))
+  }
+  
+  
+  if(title %in% "BSID IV"){
+  catvis_b4 <- df |> # Getting the PARAM data
+    filter(TEST %in% c("BSID III Cognitive Raw Score",
+                       "BSID III Expressive Communication Raw Score",
+                       "BSID III Receptive Communication Raw Score",
+                       "BSID III Gross Motor Raw Score",
+                       "BSID III Fine Motor Raw Score")) |>
+    distinct(COHORT, VISIT, Subject) |> 
+    mutate(ASSESSED = "Assessed",
+           VISIT = ifelse(grepl("Week 49", VISIT), "Week 49", VISIT),
+           VISITNUM = parse_number(VISIT),
+           VISITNUM = case_when(VISIT == "Screening" ~ -1,
+                                VISIT == "Baseline" ~ 0,
+                                TRUE ~ VISITNUM)) |> 
+    arrange(COHORT, Subject, VISITNUM) |> 
+    distinct(COHORT, Subject)
+  
+  catvis<- catvis |> 
+    full_join(catvis_b4, by = c("COHORT", "Subject"))
+  
+  all_lvls <- if (is.factor(catvis$COHORT)) levels(catvis$COHORT) else unique(catvis$COHORT)
+  
+}
+  
+  
+  catvis |>
+    ggplot(aes(y=Subject, group = Subject)) +
+    geom_point(aes(x= VISITNUM, col = ASSESSED), size = 5) +
+    facet_wrap(~ COHORT, ncol = 1, strip.position = "left", scales = "free_y")+
+    theme_bw() +
+    scale_color_manual(
+      name = "",
+      values = c(
+        "Assessed" = "blue", 
+        "Not Available" = "gray",   
+        "Unscheduled" = "cyan", 
+        "Exclude" = "transparent"
+      ),
+      breaks = c("Not Available", "Unscheduled")
+    ) +
+    scale_x_continuous(
+      breaks = catvis |> distinct(VISITNUM) |> arrange(VISITNUM) |> pull(VISITNUM) |> append(97),
+      labels = catvis |> distinct(VISIT, VISITNUM) |> arrange(VISITNUM) |> pull(VISIT) |> append("Week 97"),
+      limits = c(min(catvis$VISITNUM, na.rm = TRUE), 97)
+    ) +
+    theme(
+      axis.title.x = element_text(face = "bold", size = 14),
+      axis.title.y = element_blank(),
+      axis.text.x = element_text(face = "bold", size = 10, angle = 45, hjust = 1),
+      axis.text.y = element_text(face = "bold", size = 12),
+      
+      strip.text = element_text(face = "bold", size = 12),
+      strip.placement = "outside",
+      strip.background = element_blank(),
+      
+      legend.title = element_text(face = "bold", size = 12),
+      legend.text  = element_text(size = 12),
+      
+      legend.position = c(.95, 0),   # (x, y) in normalized plot coordinates
+      legend.justification = c("right", "bottom"),
+      legend.background = element_rect(fill = NA, color = NA), 
+      
+      plot.title = element_text(face = "bold", size = 14), 
+    ) +
+    labs(title = title,
+         x = "Visit Name")
+}
+```
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+csf <- 
+comp(
+  df = testvals_cont,
+  title = "CSF (Biomarkers)",
+  params = c("CSF Heparan Sulfate (ng/mL)",
+             "CSF Dermatan Sulfate (ng/mL)")
+)
+
+urn <-
+comp(
+  df = testvals_cont,
+  title = "Urine (Biomarkers)",
+  params = c("Urine Heparan Sulfate (ng/ug Creatinine)",
+             "Urine Dermatan Sulfate (ng/ug Creatinine)")
+)
+
+org <-
+comp(
+  df = testvals_cont,
+  title = "Abdominal MRI (Liver and Spleen)",
+  params = c("Liver Volume MN",
+             "Spleen Volume MN")
+  )
+
+brnc <-
+comp(
+  df = testvals_cont,
+  title = "Brain MRI",
+  params = distinct(brn_vals, TEST) |> pull(TEST)
+  )
+
+abrc <-
+comp(
+  df = testvals_cont,
+  title = "Auditory Brainstem Response",
+  params = distinct(abr_vals, TEST) |> pull(TEST)
+  )
+
+kabc <- 
+  comp(
+    df = testvals_cont |> filter(!is.na(VAL)),
+    title = "Kaufman Assessment Battery for Children",
+    params = distinct(kabc_vals, TEST) |> pull(TEST)
+  )
+
+vin <-
+  comp(
+    df = testvals_cont |> filter(!is.na(VAL)),
+    title = "Vineland 3",
+    params = c("Vineland 3 ABRS8",
+               "Vineland 3 ABC")
+  )
+
+b3 <-
+  comp(
+    df = testvals_cont |> filter(!is.na(VAL)),
+    title = "BSID III",
+    params = c("BSID III Cognitive Raw Score",
+               "BSID III Expressive Communication Raw Score",
+               "BSID III Receptive Communication Raw Score",
+               "BSID III Gross Motor Raw Score",
+               "BSID III Fine Motor Raw Score")
+  )
+
+b4 <-
+  comp(
+    df = testvals_cont |> filter(!is.na(VAL)),
+    title = "BSID IV",
+    params = c("BSID IV Cognitive Raw Score",
+               "BSID IV Expressive Communication Raw Score",
+               "BSID IV Receptive Communication Raw Score",
+               "BSID IV Gross Motor Raw Score",
+               "BSID IV Fine Motor Raw Score")
+  )
+```
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+foot <- paste("Biomarker samples analyzed at a specialty laboratory.",
+              "Blue markers indicate scheduled assessments populated in the dataset.", 
+              "Gray markers indicate assessments scheduled but not populated in the dataset.",
+              "Study week for unscheduled assessments was determined by dividing study day by 7.",
+              sep = "\n")
+
+(csf + urn) +
+  plot_annotation(
+    caption = foot,
+    theme = theme(
+      plot.caption = element_text(hjust = 0, size = 10),
+      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
+    )
+  )
+```
+
+\newpage
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+foot <- paste("Blue markers indicate scheduled assessments populated in the dataset.", 
+              "Gray markers indicate assessments scheduled but not populated in the dataset.",
+              "Study week for unscheduled assessments was determined by dividing study day by 7.",
+              sep = "\n")
+
+(org + brnc) +
+  plot_annotation(
+    caption = foot,
+    theme = theme(
+      plot.caption = element_text(hjust = 0, size = 10),
+      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
+    )
+  )
+```
+
+\newpage
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 7
+#| fig-height: 8
+
+foot <- paste("Blue markers indicate scheduled assessments populated in the dataset.", 
+              "Gray markers indicate assessments scheduled but not populated in the dataset.",
+              "Study week for unscheduled assessments was determined by dividing study day by 7.",
+              sep = "\n")
+
+abrc +
+  plot_annotation(
+    caption = foot,
+    theme = theme(
+      plot.caption = element_text(hjust = 0, size = 10),
+      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
+    )
+  )
+```
+
+\newpage
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+foot <- paste("Blue markers indicate scheduled assessments populated in the dataset.", 
+              "Gray markers indicate assessments scheduled but not populated in the dataset.",
+              "Study week for unscheduled assessments was determined by dividing study day by 7.",
+              sep = "\n")
+
+(kabc + vin) +
+  plot_annotation(
+    caption = foot,
+    theme = theme(
+      plot.caption = element_text(hjust = 0, size = 10),
+      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
+    )
+  )
+```
+
+\newpage
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+foot <- paste("Blue markers indicate scheduled assessments populated in the dataset.", 
+              "Gray markers indicate assessments scheduled but not populated in the dataset.",
+              "Study week for unscheduled assessments was determined by dividing study day by 7.",
+              sep = "\n")
+
+(b3 + b4) +
+  plot_annotation(
+    caption = foot,
+    theme = theme(
+      plot.caption = element_text(hjust = 0, size = 10),
+      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
+    )
+  )
+```
+
+\newpage
+
+### Important Protocol Deviation Summary
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+dv <- dv |> 
+  left_join(safflds) |> 
+  filter(!is.na(COHORT))
+
+pd <- dv |> 
+  left_join(scr |> distinct(Subject, AGE, AGEM, SEX, COHORT)) |> 
+  left_join(demog |> distinct(Subject, RACE)) |> 
+  filter(!is.na(COHORT) & 
+           `Deviation Category` %in% "Protocol Deviation" & 
+           Important %in% "Yes") |> 
+  mutate(
+    `Participant ID/Cohort` = paste0(Subject, "/", COHORT),
+    `Age(Y:M)/Sex/Race` = paste0(str_c(AGE, ":", AGEM-(AGE*12)), "/", SEX, "/", RACE),
+    `Date of Deviation` = `Date Occurred`,
+    `Important Protocol Deviation` = Description
+    ) |> 
+  select(`Participant ID/Cohort`,  `Age(Y:M)/Sex/Race`, `Date of Deviation`, `Important Protocol Deviation`) 
+
+impd <- dv |> 
+  filter(`Deviation Category` %in% "Protocol Deviation" & Important %in% "Yes") |> 
+  mutate(CAT = "Participant with atleast one important protocol deviation") |> 
+  distinct(CAT, COHORT, Subject, USUBJID, Description) |> 
+  mutate(
+    SUBCAT = case_when(
+      str_detect(Description, regex("AESI|SAE|adverse event", ignore_case = TRUE)) ~ "Adverse event reporting deviation",
+      str_detect(Description, regex("informed consent", ignore_case = TRUE)) ~ "Informed consent violation",
+      str_detect(Description, regex("not performed|missed visit|missed assessment", ignore_case = TRUE)) &
+        str_detect(Description, regex("safety", ignore_case = TRUE)) ~ "Missed assessment – safety",
+      str_detect(Description, regex("not performed|missed visit|missed assessment", ignore_case = TRUE)) ~ "Missed visit",
+      str_detect(Description, regex("out of window", ignore_case = TRUE)) ~ "Out of window",
+      str_detect(Description, regex("treatment supplies|trtmt supplies|drug accountability", ignore_case = TRUE)) ~ "Study treatment not administered per protocol",
+      str_detect(Description, regex("restriction|excluded therapy|ineligible|violation of inclusion", ignore_case = TRUE)) ~ "Protocol exclusion or restriction violated",
+      TRUE ~ "Other deviation"
+    )
+  ) |> 
+  distinct(COHORT, Subject, USUBJID, CAT, SUBCAT) |> 
+  mutate(COHORT = factor(COHORT, levels = cohfact))
+```
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+pdtab <-
+pd |> 
+  kable() |> 
+  row_spec(0,bold=TRUE) |> 
+  column_spec(4, latex_column_spec = "p{5cm}") |> 
+  kable_styling(font_size = 9, latex_options = "striped") |> 
+  kable_styling(latex_options = "hold_position")
+
+
+pdsumtab <-
+basic_table(show_colcounts = TRUE) %>% 
+  split_cols_by("COHORT") %>%
+  add_overall_col(label = "All Cohorts") %>% 
+  summarize_num_patients(
+    var = "USUBJID",
+    .stats = "unique",
+    .labels = "Participant with atleast one important protocol deviation"
+  ) %>% 
+  count_occurrences(
+    vars = "SUBCAT"
+  ) %>%
+  append_topleft("Important Protocol Deviation Type") %>% 
+  build_table(impd, alt_counts_df = safflds) %>% 
+  tt_to_df1() %>%
+  mutate(across(1, ~str_replace_all(., "%", "\\\\%"))) %>%
+  mutate(across(everything(), trimws)) %>%
+  kable(booktabs = TRUE, 
+        escape = FALSE,
+        col.names = names(.), 
+        align = paste0("l", strrep("c", ncol(.)))
+        )
+```
+
+\vspace{0.5cm}
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+pdsumtab
+
+pdtab 
+```
+
+\newpage
+
+## Study Drug Exposure
+
+### Study Drug Exposure by Cohort
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+ae <- ae  |>
+  mutate(
+    AETOXGR = as.character(AETOXGR) |> trimws(),
+    AESTDAT = date(AESTDAT),
+    AEENDAT = date(AEENDAT),
+    AESTDAT_INT = as.Date(AESTDAT_INT),
+    AEACNAE = paste0(ifelse(AEACNCM == 1, "Concom-Medication", ""),
+                     " ",
+                     ifelse(AEACNPRO == 1, "Procedure", "")) |> trimws(),
+    SAECRIT = pmap_chr(
+      list(
+        ifelse(AESDTH == 1, "Fatal", NA_character_),
+        ifelse(AESLIFE == 1, "Life-threatening", NA_character_),
+        ifelse(AESDISAB == 1, "Disability", NA_character_),
+        ifelse(AESHOSP == 1, "Required inpatient hospitalization", NA_character_),
+        ifelse(AESHOSPS == 1, "Prolongation of existing hospitalization", NA_character_),
+        ifelse(AESCONG == 1, "Congenital anomaly", NA_character_),
+        ifelse(AESMIE == 1, "Significant medical event", NA_character_)
+      ),
+      ~ str_c(na.omit(c(...)), collapse = ", ")
+    ),
+    IRRFL = ifelse(AETERM_PT == "Infusion related reaction", "Yes", "No")
+  ) |>
+  left_join(scr |> select(Subject, COHORT)) |> 
+  filter(!is.na(COHORT))
+
+allae <- ae |> # Treatment emergent 
+  left_join(ex_EXSTDT) |> 
+  mutate(
+    USUBJID = Subject,
+    ASTDT = case_when(is.na(AESTDAT) & 
+                          !is.na(AESTDAT_INT) & 
+                          substr(AESTDAT_INT, 1, 7) == substr(as.character(TRTSDT), 1, 7) ~ TRTSDT,
+                        is.na(AESTDAT) &
+                          !is.na(AESTDAT_INT) &
+                          as.Date(AESTDAT_INT) >= TRTSDT ~ AESTDAT_INT,
+                        is.na(AESTDAT) &
+                          !is.na(AESTDAT_INT) &
+                          as.Date(AESTDAT_INT) < TRTSDT ~ ceiling_date(ym(substr(AESTDAT_INT, 1, 7)),
+                                                                       "month") - days(1),
+                        TRUE ~ AESTDAT),
+    ASTDT = as.Date(ASTDT),
+    ASTDTM = as.POSIXct(paste0(ASTDT, "T", AESTTIM), format = "%Y-%m-%dT%H:%M"),
+    AENDT = as.Date(AEENDAT),
+    AETOXGRN = parse_number(AETOXGR),
+    TRTEMFL = case_when(!is.na(ASTDTM) & ASTDTM >= TRTSDTM ~ "Y",
+                             is.na(ASTDTM) & ASTDT >= TRTSDT ~ "Y",
+                             is.na(ASTDT) & 
+                               !is.na(AESTDAT_INT) & 
+                               substr(AESTDAT_INT, 1, 7) == substr(as.character(TRTSDT), 1, 7) ~ "Y",
+                             is.na(AESTDAT) & 
+                               !is.na(AESTDAT_INT) & 
+                               as.Date(AESTDAT_INT) >= TRTSDT ~ "Y",
+                             TRUE ~ NA_character_), 
+    AETERM_PT = ifelse(is.na(AETERM_PT), AETERM, AETERM_PT),
+    AETERM_SOC = ifelse(is.na(AETERM_SOC), "Uncoded", AETERM_SOC),
+    AEACN = ifelse(is.na(AEACN), "Unknown", AEACN),
+    ASTDY = ifelse(ASTDT >= TRTSDT,
+                   as.integer(ASTDT - TRTSDT + 1),
+                   as.integer(ASTDT - TRTSDT)),
+    AENDY = ifelse(AENDT >= TRTSDT,
+                   as.integer(AENDT - TRTSDT + 1),
+                   as.integer(AENDT - TRTSDT)),
+    across(all_of(c("AESI2", "AESI3", "AESI4")), ~ ifelse(. == 1, "Yes", "No")),
+    AETOXGR = factor(
+      AETOXGR,
+      levels = c("1","2","3","4","5"),
+      labels = c("Grade 1","Grade 2","Grade 3","Grade 4","Grade 5"),
+      ordered = TRUE
+      ),
+    AETERM_SOC = toupper(AETERM_SOC)
+  ) |> 
+  select(COHORT, USUBJID, Subject, AESTDAT, AEENDAT, ASTDT, ASTDTM, ASTDY, AENDT, AENDY, TRTSDT, 
+         AETERM, AEDECOD = AETERM_PT, AESOC = AETERM_SOC, AEBODSYS = AETERM_SOC, AESI2, AESI3, AESI4,
+         AESER, SAECRIT, AEOUT, AESEV, AEREL, AEACN, AEACNAE, AESI, AETOXGR, AETOXGRN, PROCREL, TRTEMFL, AESPID,
+         IRRFL, AESDTH) |> 
+  distinct() |> 
+  arrange(Subject, ASTDT) |> 
+  left_join(demog |> select(Subject, AGEM, SEX), by = "Subject")
+
+allae <- allae |> 
+  mutate(
+    `Participant ID, Cohort, Age(months)/Sex` = 
+      paste0(
+        Subject, ", ",
+        COHORT, ", ",
+        AGEM, "/", SEX
+      ),
+    AEID = AESPID,
+    `SYSTEM ORGAN CLASS, Preferred Term, Term` =
+      paste(AESOC, ", ", 
+            AEDECOD, ", ", 
+            AETERM),
+    `S: Start Date(Day), E: End Date(Day)` =
+      paste0("S: ", ASTDT, " (", ASTDY, "), E: ", ifelse(is.na(AENDT), " --", paste0(AENDT, " (", AENDY, ")"))), 
+    `CTCAE Grading, Seriousness` =
+      paste0(AETOXGR, ", ", AESER),
+    `Action Taken D: DNL126, A: AE` =
+      paste0("D: ", AEACN, ", A:", ifelse(is.na(AEACNAE)|AEACNAE == "", " --", AEACNAE)),
+    Outcome = AEOUT,
+    `Relationship D: DNL126, P: Protocol Procedure` =
+      paste0("D: ", AEREL, ", P: ", ifelse(is.na(PROCREL)|PROCREL == "", " --", PROCREL))
+  )
+```
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+dovmiss <- dov |> 
+  filter(VISYN == "No" & 
+           !grepl("Screening|Baseline|Unscheduled", InstanceName) &
+           !grepl("Not required by protocol", VIRSN)
+  ) |> 
+  distinct(Subject, VISIT = trimws(InstanceName)) |> 
+  mutate(SOURCE = "DOV",
+         MISSFL = "Y",
+         EXVOLA = 0,
+         EXVOLP = 0) |> 
+  arrange(Subject, VISIT)
+
+adex <- ex |> 
+  mutate(EXSTTIM = ifelse(nchar(EXSTTIM) == 4, paste0("0", EXSTTIM), EXSTTIM), # Standardizing time as HH:MM
+         EXENTIM = ifelse(nchar(EXENTIM) == 4, paste0("0", EXENTIM), EXENTIM)) |> 
+  transmute(Subject,
+            VISIT = trimws(InstanceName), 
+            VISIT = ifelse(grepl("Week 25", VISIT), "Week 25", VISIT),
+            EXSTDAT,
+            EXSTTIM,
+            EXSTDTC = paste0(EXSTDAT, "T", EXSTTIM),
+            EXSTDT = convert_dtc_to_dt(EXSTDTC),
+            EXSTDTM = convert_dtc_to_dtm(EXSTDTC),
+            EXENDAT,
+            EXENTIM,
+            EXENDTC = paste0(EXENDAT, "T", EXENTIM),
+            EXENDT = convert_dtc_to_dt(EXENDTC),
+            EXENDTM = convert_dtc_to_dtm(EXENDTC),
+            INTRSTTM,
+            INTRSTDTC = if_else(EXITRPYN == "Yes" & !is.na(INTRSTTM),
+                                paste0(EXSTDAT, "T", INTRSTTM),
+                                NA),
+            INTRSTDT = convert_dtc_to_dt(INTRSTDTC),
+            INTRSTDTM = convert_dtc_to_dtm(INTRSTDTC),
+            INTRENTM,
+            INTRENDTC = if_else(EXITRPYN == "Yes" & !is.na(INTRENTM),
+                                paste0(EXSTDAT, "T", INTRENTM), 
+                                NA),
+            INTRENDT = convert_dtc_to_dt(INTRENDTC),
+            INTRENDTM = convert_dtc_to_dtm(INTRENDTC),
+            EXOCCUR,
+            EXITRPYN, # was it interrupted?
+            INTRSN, # why was it interrupted?
+            INFRSTYN, # was the infusion restarted?
+            EXRSND, # reason dose wasn't done
+            EXPLTDOS, # expected dose
+            EXACTDOS, # actual dose
+            EXVOLA, # actual volume
+            EXVOLP, # planned volume
+            DOSE = paste(EXDOSE, "mg/kg"),
+            EXINRATE = as.numeric(EXINRATE),
+            
+            # COMPLIANCE = EXVOLA / EXVOLP * 100,
+            
+            deviation = if_else(!is.na(EXVOLA) & !is.na(EXVOLP),
+                                abs((EXVOLA - EXVOLP) / EXVOLP) * 100,
+                                NA_real_),
+            PLANDOSE = as.numeric(EXPLTDOS),
+            ACTDOSE = case_when(
+              is.na(EXVOLA) & is.na(EXACTDOS) ~ NA_real_,
+              !is.na(EXVOLA) & !is.na(EXVOLP) & EXVOLA > EXVOLP ~ PLANDOSE,
+              !is.na(EXVOLA) & !is.na(EXVOLP) & EXVOLA < EXVOLP & deviation < 10 ~ PLANDOSE,
+              !is.na(EXVOLA) & !is.na(EXVOLP) & EXVOLA < EXVOLP & deviation >= 10 ~ (PLANDOSE * as.numeric(EXVOLA)) / EXVOLP,
+              deviation == 0 ~ PLANDOSE,
+              TRUE ~ NA_real_),
+            COMPLIANCE = ((ACTDOSE / PLANDOSE) * 100),
+            
+            SOURCE
+  ) |>
+  arrange(Subject, EXSTDTC) |>
+  group_by(Subject) |>
+  mutate(TRTSDT = min(EXSTDAT[EXOCCUR == "Yes"])) |> 
+  ungroup() |> 
+  bind_rows(dovmiss) |> 
+  mutate(
+    COMPCAT = case_when(
+              COMPLIANCE < 50 ~ "<50%",
+              COMPLIANCE >= 50 & COMPLIANCE < 75 ~ "50-<75%",
+              COMPLIANCE >= 75 & COMPLIANCE < 90 ~ "75-<90%",
+              COMPLIANCE >= 90 & COMPLIANCE <= 100 ~ "90-100%",
+              COMPLIANCE > 100 ~ ">100%",
+              EXVOLA == 0 | is.na(EXVOLA)  ~ "Missing Dose Entry",
+              .default = "other"
+              ),
+    COMPCAT = factor(
+              COMPCAT,
+              levels = c(
+              "<50%",
+              "50-<75%",
+              "75-<90%",
+              "90-100%",
+              ">100%",
+              "Missing Dose Entry"
+              )
+              )
+    ) |> 
+  derive_vars_dy(TRTSDT, exprs(EXSTDT, EXENDT)) |> 
+  group_by(Subject) |>
+  mutate(AVISIT = VISIT,
+         AVISITN = parse_number(AVISIT),
+         VISITNUM = parse_number(VISIT),
+         TRTDURW = difftime(max(EXENDT[grepl("Yes", EXOCCUR)]), 
+                            min(EXSTDT[grepl("Yes", EXOCCUR)]), 
+                            units = "weeks") |> as.numeric(),
+         DOS13MISS = ifelse(AVISITN <= 13 & is.na(EXOCCUR), "Y", NA_character_),
+         DOS25MISS = ifelse(AVISITN <= 25 & is.na(EXOCCUR), "Y", NA_character_),
+         DOS49MISS = ifelse(AVISITN <= 49 & is.na(EXOCCUR), "Y", NA_character_),
+         DOS97MISS = ifelse(AVISITN <= 97 & is.na(EXOCCUR), "Y", NA_character_)
+  )
+
+dos13 <- adex |> 
+  mutate(DOS13 = ifelse(AVISITN <= 13 & grepl("Yes", EXOCCUR), "Y", NA_character_)) |> 
+  filter(DOS13 == "Y") |> 
+  distinct(Subject, DOS13)
+
+dos25 <- adex |> 
+  mutate(DOS25 = ifelse(AVISITN <= 25 & grepl("Yes", EXOCCUR), "Y", NA_character_)) |> 
+  filter(DOS25 == "Y") |> 
+  distinct(Subject, DOS25)
+
+dos49 <- adex |> 
+  mutate(DOS49 = ifelse(AVISITN <= 49 & grepl("Yes", EXOCCUR), "Y", NA_character_)) |> 
+  filter(DOS49 == "Y") |> 
+  distinct(Subject, DOS49)
+
+dos97 <- adex |> 
+  mutate(DOS97 = ifelse(AVISITN <= 97 & grepl("Yes", EXOCCUR), "Y", NA_character_)) |> 
+  filter(DOS97 == "Y") |> 
+  distinct(Subject, DOS97)
+
+dos13c <- adex |> 
+  mutate(DOS13COMP = ifelse(AVISITN >= 13 & grepl("Yes", EXOCCUR), "Y", NA_character_)) |> 
+  filter(DOS13COMP == "Y") |> 
+  distinct(Subject, DOS13COMP)
+
+dos25c <- adex |> 
+  mutate(DOS25COMP = ifelse(AVISITN >= 25 & grepl("Yes", EXOCCUR), "Y", NA_character_)) |> 
+  filter(DOS25COMP == "Y") |> 
+  distinct(Subject, DOS25COMP)
+
+dos49c <- adex |> 
+  mutate(DOS49COMP = ifelse(AVISITN >= 49 & grepl("Yes", EXOCCUR), "Y", NA_character_)) |> 
+  filter(DOS49COMP == "Y") |> 
+  distinct(Subject, DOS49COMP)
+
+dos97c <- adex |> 
+  mutate(DOS97COMP = ifelse(AVISITN >= 97 & grepl("Yes", EXOCCUR), "Y", NA_character_)) |> 
+  filter(DOS97COMP == "Y") |> 
+  distinct(Subject, DOS97COMP)
+
+adex <- list(adex, dos13, dos25, dos49, dos97, dos13c, dos25c, dos49c, dos97c) |> 
+  reduce(left_join, by = "Subject")
+
+adex <- adex |>
+  mutate_at(vars(matches("EX.*DOS")), 
+            ~gsub(" ", "", .)) %>% 
+  ungroup() |> 
+  arrange(Subject, AVISITN) |> 
+  left_join(safflds) |> 
+  mutate(COHORT = factor(COHORT, levels = cohfact))
+
+irrae <- allae |> 
+  filter(AEDECOD %in% "Infusion related reaction" & !is.na(AETOXGR)) |> 
+  left_join(
+    adex |> distinct(Subject, VISIT, VISITNUM, EXSTDT),
+    by = c("Subject", "ASTDT" = "EXSTDT")
+  ) |> 
+  arrange(COHORT, Subject, VISITNUM, VISIT, desc(AETOXGRN)) |> 
+  group_by(COHORT, Subject, VISITNUM, VISIT) |> 
+  mutate(n = n()) |> 
+  slice_head(n=1) |> 
+  ungroup()
+
+
+n_fun <- function(df, labelstr) {
+  num_sub <- length(unique(df$USUBJID))
+  rcell(num_sub, format = sprintf_format("N=%d"), label = labelstr)
+}
+
+s_summary <- function(x) {
+  format_range <- function(x) {
+    vals <- range(x, na.rm = TRUE)
+    # Replace Inf/-Inf with "-"
+    vals[is.infinite(vals)] <- "-"
+    # Ensure output is character, to support "-"
+    vals
+  }
+  
+  if (is.numeric(x)) {
+    in_rows(
+      "Mean (SD)" = rcell(c(mean(x, na.rm = TRUE), sd(x, na.rm = TRUE)), format = "xx.x (xx.x)"),
+      "Median" = rcell(median(x, na.rm = TRUE), format = "xx.x"),
+      "Min, Max" = rcell(range(x, na.rm = TRUE), format = "xx.x, xx.x")
+    )
+  } else if (is.factor(x)) {
+    fct <- as.list(table(x))
+    do.call(in_rows, lapply(fct, rcell, format = "xx"))
+  } else {
+    stop("type not supported")
+  }
+}
+
+
+# Participants treated
+trted <- bind_rows(
+  adex |> 
+    filter(!is.na(DOS13COMP)) |> 
+    mutate(trted = "Through Week 13"),
+  adex |> 
+    filter(!is.na(DOS25COMP)) |> 
+    mutate(trted = "Through Week 25 Core Study Period"),
+  adex |> 
+    filter(!is.na(DOS97COMP)) |> 
+    mutate(trted = "Through Week 97 OLE")
+) |> 
+  mutate(trted = factor(trted, levels = c("Through Week 13",
+                                          "Through Week 25 Core Study Period",
+                                          "Through Week 97 OLE")))
+
+subj_trted <- basic_table(show_colcounts = TRUE) |> 
+  split_cols_by("COHORT") |> 
+  add_overall_col(label = "All Cohorts") |> 
+  count_occurrences(
+    vars = "trted",
+    show_labels = "visible",
+    var_labels = "Participants treated:",
+    section_div = " ",
+    drop = FALSE
+  ) |>
+  build_table(trted, alt_counts_df = safflds)
+
+# Duration of Exposure to Treatment
+dur <- adex |>
+  filter(DOS97 == "Y" &!is.na(EXOCCUR)) |>
+  distinct(COHORT,Subject, USUBJID, EXSTDTC) |>
+  arrange(COHORT,Subject, USUBJID, EXSTDTC) |>
+  group_by(COHORT,Subject, USUBJID) |>
+  slice_head(n = 1) |>
+  ungroup() |>
+  left_join(adex |>
+              filter(DOS97 == "Y" &!is.na(EXOCCUR)) |>
+              distinct(COHORT,Subject, USUBJID, EXENDTC) |>
+              arrange(COHORT,Subject, USUBJID, EXENDTC) |>
+              group_by(COHORT,Subject, USUBJID) |>
+              slice_tail(n = 1) |>
+              ungroup(),
+            by = c("COHORT","Subject","USUBJID")) |>
+  mutate(EXSTDTC = as.Date(EXSTDTC),
+         EXENDTC = as.Date(EXENDTC)) |>
+  derive_vars_duration(start_date = EXSTDTC, end_date = EXENDTC, new_var = DUR) |>
+  mutate(DUR = floor(DUR/7) + 1)
+
+# dur <- adex |>
+#   filter(DOS97 == "Y" &!is.na(EXOCCUR)) |>
+#   distinct(COHORT,Subject, USUBJID, EXENDTC, AVISITN) |>
+#   arrange(COHORT,Subject, USUBJID, EXENDTC) |>
+#   group_by(COHORT,Subject, USUBJID) |>
+#   slice_tail(n = 1) |>
+#   ungroup() |>
+#   mutate(DUR = AVISITN)
+
+subj_dur <- basic_table(show_colcounts = TRUE) |>
+  split_cols_by("COHORT") |>
+  add_overall_col("All Cohorts") |>
+  analyze(
+    "DUR", 
+    afun = s_summary, 
+    show_labels = "visible",
+    var_labels = "Duration of Exposure to Treatment (weeks)",
+    section_div = " "
+  ) |>
+  build_table(dur, alt_counts_df = safflds)
+
+
+# Number of given infusions per participant
+inf <- bind_rows(
+  adex |> 
+    filter(!is.na(EXOCCUR) & AVISITN <= 13) |> 
+    mutate(WEEK = "Weeks 1 - 13"),
+  
+  adex |> 
+    filter(!is.na(EXOCCUR) & AVISITN > 13 & AVISITN <= 25) |>
+    mutate(WEEK = "Weeks 14 - 25"),
+  
+  adex |> 
+    filter(!is.na(EXOCCUR) & AVISITN > 25 & AVISITN <= 49) |>
+    mutate(WEEK = "Weeks 26 - 49"),
+  
+  adex |> 
+    filter(!is.na(EXOCCUR) & AVISITN > 49 & AVISITN <= 97) |>
+    mutate(WEEK = "Weeks 50 - 97"),
+  
+  adex |> 
+    filter(!is.na(EXOCCUR) & AVISITN <= 97) |> 
+    mutate(WEEK = "Weeks 1 - 97")
+) |> 
+  distinct(AVISITN, COHORT, USUBJID, WEEK) |> 
+  group_by(WEEK, COHORT, USUBJID) |> 
+  summarise(`Number of given infusions per participant` = n(), .groups = "drop") 
+
+
+# Number of missed infusions per participant
+miss <- bind_rows(
+  adex |> 
+    filter(DOS13MISS == "Y") |> 
+    mutate(WEEK = "Weeks 1 - 13"),
+  
+  adex |>
+    filter(is.na(DOS13MISS) & !is.na(DOS25MISS)) |>
+    mutate(WEEK = "Weeks 14 - 25"),
+  
+  adex |>
+    filter(is.na(DOS25MISS) & !is.na(DOS49MISS)) |>
+    mutate(WEEK = "Weeks 26 - 49"),
+  
+  adex |>
+    filter(is.na(DOS49MISS) & !is.na(DOS97MISS)) |>
+    mutate(WEEK = "Weeks 50 - 97"),
+  
+  adex |> 
+    filter(!is.na(DOS97MISS)) |> 
+    mutate(WEEK = "Weeks 1 - 97")
+) |> 
+  distinct(AVISITN, COHORT, USUBJID, WEEK) |> 
+  group_by(WEEK, COHORT, USUBJID) |> 
+  summarise(AVAL = n(), .groups = "drop") |> 
+  mutate(
+    `Number of missed infusions per participant` = case_when(
+      AVAL > 2 ~ ">2",
+      AVAL >= 1 | AVAL <= 2 ~ "1 - 2",
+      AVAL == 0 ~ "0",
+      TRUE ~ NA_character_
+    )
+  ) |> 
+  select(-AVAL)
+
+
+# Compliance category
+comp <- bind_rows(
+  adex |> 
+    filter(!is.na(EXOCCUR) & AVISITN <= 13) |> 
+    mutate(WEEK = "Weeks 1 - 13"),
+  
+  adex |> 
+    filter(!is.na(EXOCCUR) & AVISITN > 13 & AVISITN <= 25) |>
+    mutate(WEEK = "Weeks 14 - 25"),
+  
+  adex |> 
+    filter(!is.na(EXOCCUR) & AVISITN > 25 & AVISITN <= 49) |>
+    mutate(WEEK = "Weeks 26 - 49"),
+  
+  adex |> 
+    filter(!is.na(EXOCCUR) & AVISITN > 49 & AVISITN <= 97) |>
+    mutate(WEEK = "Weeks 50 - 97"),
+  
+  adex |> 
+    filter(!is.na(EXOCCUR) & AVISITN <= 97) |> 
+    mutate(WEEK = "Weeks 1 - 97")
+) |> 
+  filter(!is.na(COMPLIANCE)) |> 
+  distinct(AVISITN, WEEK, COHORT, USUBJID, COMPLIANCE) |> 
+  group_by(WEEK, COHORT, USUBJID) |> 
+  summarise(`Study Infusion compliance` = mean(COMPLIANCE, na.rm = TRUE), .groups = "drop") |>
+  mutate(
+    `Study Infusion compliance` = factor(case_when(
+      `Study Infusion compliance` < 75 ~ "< 75%",
+      `Study Infusion compliance` >= 75 ~ "75 - 100%"
+    ), levels = c("< 75%", "75 - 100%"))
+  )
+
+
+weeks <- reduce(
+  list(inf, miss, comp),
+  full_join,
+  by = c("WEEK", "COHORT", "USUBJID")
+) |> 
+  mutate(
+    WEEK = factor(WEEK,
+                  levels = c("Weeks 1 - 97",
+                             "Weeks 1 - 13",
+                             "Weeks 14 - 25",
+                             "Weeks 26 - 49",
+                             "Weeks 50 - 97")),
+    `Number of missed infusions per participant` = ifelse(is.na(`Number of missed infusions per participant`), "0", `Number of missed infusions per participant`),
+    `Number of missed infusions per participant` = factor(`Number of missed infusions per participant`, levels = c("0", "1 - 2", ">2"))
+         )
+
+
+subj_weeks <- basic_table(show_colcounts = TRUE) |> 
+  split_cols_by("COHORT") |> 
+  add_overall_col(label = "All Cohorts") |> 
+  split_rows_by("WEEK", section_div = "") |>
+  summarize_row_groups("WEEK", cfun = n_fun) |>
+  analyze_vars(
+    "Number of given infusions per participant", 
+    na_str = "-",
+    .stats = c("mean_sd", "median", "range"),
+    show_labels = "visible",
+    section_div = " "
+    ) |>
+  analyze_vars(
+    "Number of missed infusions per participant", 
+    na_str = "-",
+    .stats = "count_fraction",
+    show_labels = "visible",
+    section_div = " "
+    ) |>
+  analyze_vars(
+    "Study Infusion compliance", 
+    na_str = "-",
+    .stats = "count_fraction",
+    show_labels = "visible",
+    section_div = " "
+    ) |>
+  build_table(weeks, alt_counts_df = safflds)
+
+
+exp_table <- rbind(
+  subj_trted,
+  subj_dur,
+  subj_weeks
+)
+
+exp_table |> 
+  tt_to_df1()%>% 
+  kable(booktabs = TRUE, 
+        col.names = names(.), 
+        align = paste0("l", strrep("c", ncol(.)))
+        )
+```
+
+\newpage
+
+### Individual Participant Profiles: Drug Exposure, Derived Weekly Dose Compliance, IRR Adverse Events and Action Taken
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+adex_irr  <- adex |> 
+  left_join(irrae |> distinct(Subject, ASTDT, AESEV, AEACN), by = c("Subject", "EXSTDT" = "ASTDT")) |> 
+  mutate(COMPLIANCE = ifelse(is.na(COMPLIANCE), 0, COMPLIANCE))
+
+plot_subject_dose <- function(subj) {
+  
+  ex_irr <-  adex_irr |> filter(Subject == subj & !is.na(AESEV)) |>
+    distinct(VISITNUM, AESEV)
+  
+  df <- adex_irr |> filter(Subject == subj)
+  
+  cohort <- df |> distinct(COHORT) |> pull()
+  
+  df |> 
+    ggplot(aes(x = VISITNUM, y = COMPLIANCE)) +
+    geom_line(color = "gray40", show.legend = FALSE) +
+    geom_point(aes(color = COMPCAT, shape = AEACN),
+               size = 5,
+               show.legend = TRUE) +
+    scale_color_manual(
+      name = "Weekly Dose Compliance (Derived)",
+      values = c(
+        "<50%" = "#E41A1C",
+        "50-<75%" = "blue",
+        "75-<90%" = "cyan",
+        "90-100%" = "#4DAF4A",
+        "Missing Dose Entry" = "gray"
+      ),
+      drop = FALSE
+    ) +
+    scale_shape_manual(
+      name = "Action Taken",
+      values = c(
+        "Dose not changed" = 16,
+        "Drug interrupted" = 17
+      ),
+      breaks = "Drug interrupted",
+      na.value = 16
+    ) +
+    scale_y_continuous(
+      limits = c(-10, max(df$COMPLIANCE, na.rm = TRUE) + 5),
+      breaks = seq(0, max(df$COMPLIANCE, na.rm = TRUE) + 5, 25),
+      expand = expansion(mult = c(0, 0.1))
+    ) +
+    scale_x_continuous(
+      breaks =  seq(
+        min(adex_irr$VISITNUM, na.rm = TRUE),
+        max(adex_irr$VISITNUM, na.rm = TRUE),
+        by = 2
+      ),
+      expand = expansion(mult = c(0.01, 0.01)),
+      limits = c(min(adex_irr$VISITNUM, na.rm = TRUE), 
+                 max(adex_irr$VISITNUM, na.rm = TRUE))
+    ) +
+    geom_vline(
+      data = ex_irr,
+      aes(xintercept = VISITNUM, linetype = AESEV),
+      color = "#ffb000",
+      size = 0.7,
+      show.legend = TRUE
+    ) +
+    scale_linetype_manual(
+      name = "IRR Severity",
+      values = c(
+        "Mild" = "dotted",
+        "Moderate" = "dotdash",
+        "Severe" = "solid"
+      ),
+      drop = FALSE
+    ) +
+    scale_size_manual(
+    name = "IRR Severity",
+    values = c(
+      "Mild" = 1.5,      # thin
+      "Moderate" = 1.5,  # medium
+      "Severe" = 1.5       # thick
+      )
+    ) +
+    labs(
+      x = "Treatment Week",
+      y = "Dose Compliance %",
+      title = paste0(cohort, " (", subj, ")")
+    ) +
+    theme_bw() +
+    guides(
+      color = guide_legend(
+        title = "Dose Compliance (Derived)",
+        override.aes = list(linetype = "blank"),
+        nrow = 2,
+        order = 1
+        ),
+      shape = guide_legend(
+        title = "Action Taken", 
+        override.aes = list(linetype = "blank"),
+        order = 3
+        ),
+      linetype = guide_legend(
+        title = "IRR Severity", 
+        override.aes = list(shape = NA),
+        order = 2
+        )
+    ) +
+    theme(
+      axis.title.x = element_text(face = "bold", size = 14),
+      axis.title.y = element_text(face = "bold", size = 14),
+      axis.text.x = element_text(face = "bold", size = 12, angle = 45, hjust = 1),
+      axis.text.y = element_text(face = "bold", size = 12),
+      
+      strip.text = element_text(face = "bold", size = 12),
+      strip.placement = "outside",
+      strip.background = element_blank(),
+      
+      legend.title = element_text(face = "bold", size = 12),
+      legend.text  = element_text(size = 12),
+      
+      legend.position = "bottom",   # (x, y) in normalized plot coordinates
+      legend.justification = c("right", "bottom"),
+      legend.background = element_rect(fill = NA, color = NA), 
+      
+      plot.title = element_text(face = "bold", size = 14), 
+    ) 
+}
+```
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+  p1 <- plot_subject_dose("0016-9001") + theme(legend.position = "none")
+  p2 <- plot_subject_dose("0016-9003") 
+  p3 <- plot_subject_dose("0017-9001") + theme(legend.position = "none")
+  p4 <- plot_subject_dose("0017-9002")
+
+  p5 <- plot_subject_dose("0016-9004") + theme(legend.position = "none")
+  p6 <- plot_subject_dose("0017-9003") 
+  p7 <- plot_subject_dose("2064-9002") + theme(legend.position = "none")
+  p8 <- plot_subject_dose("2065-9002")
+
+  p9 <- plot_subject_dose("0016-9005") + theme(legend.position = "none")
+  p10 <- plot_subject_dose("0016-9006")
+  p11 <- plot_subject_dose("0017-9005") + theme(legend.position = "none")
+  p12 <- plot_subject_dose("0017-9007") 
+  p13 <- plot_subject_dose("0017-9008") + theme(legend.position = "none")
+  p14 <- plot_subject_dose("2064-9003") 
+  p15 <- plot_subject_dose("2064-9004") + theme(legend.position = "none")
+  p16 <- plot_subject_dose("2064-9005") 
+  p17 <- plot_subject_dose("2065-9001") + theme(legend.position = "none")
+  p18 <- plot_subject_dose("2065-9004") 
+
+  p19 <- plot_subject_dose("0017-9004") + theme(legend.position = "none")
+  p20 <- plot_subject_dose("0017-9006")
+
+```
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+p1 / p2
+```
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+p3 / p4
+```
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+p5 / p6
+```
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+p7 / p8
+```
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+p9 / p10
+```
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+p11 / p12
+```
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+p13 / p14
+```
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+p15 / p16
+```
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+p17 / p18
+```
+
+\newpage
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+p19 / p20
+```
+
+\newpage
+
+## Adverse Events
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+allae <- allae %>%
+  mutate(across(where(is.character), ~gsub("#", "\\\\#", .)))
+
+teae <- allae |> filter(TRTEMFL %in% "Y") |> 
+  mutate(TRTEMFL = case_when(TRTEMFL %in% "Y" ~ "Yes",
+                             TRTEMFL %in% "N" ~ "No",
+                             TRUE ~ ""))
+
+teaeirr <- teae |> filter(AEDECOD %in% "Infusion related reaction") |> 
+  mutate(
+    AESEV = factor(
+      AESEV,
+      levels = c("Mild", "Moderate", "Severe"),
+      ordered = TRUE
+      )
+  )
+
+allaesumm <- allae |> filter(TRTEMFL %in% "Y") |>
+  mutate(USUBJID_TEAE = ifelse(TRTEMFL %in% "Y", USUBJID, NA_character_),
+         USUBJID_SIRTEAE = ifelse(TRTEMFL %in% "Y" & AEREL %in% "Related", USUBJID, NA_character_),
+         USUBJID_PPRTEAE = ifelse(TRTEMFL %in% "Y" & PROCREL %in% "Related", USUBJID, NA_character_),
+         USUBJID_STEAE = ifelse(TRTEMFL %in% "Y" & AESER %in% "Yes", USUBJID, NA_character_),
+         USUBJID_SIRSTEAE = ifelse(TRTEMFL %in% "Y" & AESER %in% "Yes" & AEREL %in% "Related", USUBJID, NA_character_),
+         USUBJID_AESI = ifelse(AESI %in% "Yes", USUBJID, NA_character_),
+         USUBJID_AESI2 = ifelse(AESI2 %in% "Yes", USUBJID, NA_character_),
+         USUBJID_AESI3 = ifelse(AESI3 %in% "Yes", USUBJID, NA_character_),
+         USUBJID_AESI4 = ifelse(AESI4 %in% "Yes", USUBJID, NA_character_),
+         USUBJID_DISC = ifelse(TRTEMFL %in% "Y" & AEACN %in% "Drug withdrawn", USUBJID, NA_character_),
+         USUBJID_DRED = ifelse(TRTEMFL %in% "Y" & AEACN %in% "Dose reduced", USUBJID, NA_character_)
+         )
+
+# SOC-PT Table function
+# Table cell for SOC PT  table
+soc_pt <- function(adae, adsl) {
+  table_count_once_per_id <- function(df, termvar = "AEDECOD", idvar = "USUBJID", .N_col) {
+    term_vals <- df[[termvar]]
+    id_vals <- df[[idvar]]
+    
+    # Count each Participant only once per term (PT)
+    unique_df <- df[!duplicated(paste(id_vals, term_vals)), ]
+    term_counts <- table(unique_df[[termvar]])
+    event_counts <- table(term_vals)
+    
+    formatted <- mapply(function(n, events, label) { # Format as "xx (xx.x%)"
+      pct <- (n / .N_col)*100
+      rcell(c(n, pct, events), format = sprintf_format("%d (%.1f) [%d]"))
+    }, n = term_counts, events = event_counts, label = names(term_counts), SIMPLIFY = FALSE)
+    
+    in_rows(.list = formatted)
+  }
+  
+  table_count_once_per_id1 <- function(df, termvar = "AEBODSYS", idvar = "USUBJID", .N_col) {
+    term_vals <- df[[termvar]]
+    id_vals <- df[[idvar]]
+    
+    # Count each subject only once per term (PT)
+    unique_df <- df[!duplicated(paste(id_vals, term_vals)), ]
+    term_counts <- table(unique_df[[termvar]])
+    event_counts <- table(term_vals)
+    
+    formatted <- mapply(function(n, events, label) { # Format as "xx (xx.x%)"
+      pct <- (n / .N_col)*100
+      rcell(c(n, pct, events), format = sprintf_format("%d (%.1f) [%d]"))
+    }, n = term_counts, events = event_counts, label = names(term_counts), SIMPLIFY = FALSE)
+    
+    in_rows(.list = formatted)
+  }
+  
+  adae <- adae |>
+    select(USUBJID, COHORT, AEBODSYS, AEDECOD) |>
+    mutate(
+      AEDECOD = as.factor(AEDECOD),
+      AEBODSYS = as.factor(AEBODSYS),
+      USUBJID = factor(USUBJID),
+      COHORT = factor(COHORT, levels = cohfact)
+    )
+  adae_soc_pt <- rbind(
+    basic_table(show_colcounts = TRUE) |>
+      split_cols_by("COHORT") |>
+      add_overall_col("All Cohorts") |>
+      analyze("USUBJID",
+              afun = s_events_patients,
+              show_labels = "hidden",
+              section_div = "") |>
+      build_table(adae, alt_counts_df = adsl),
+    
+    basic_table(show_colcounts = TRUE) |>
+      split_cols_by("COHORT") |>
+      add_overall_col("All Cohorts") |>
+      split_rows_by(
+        "AEBODSYS",
+        split_fun = drop_split_levels,
+        section_div = "",
+        child_labels = "hidden"
+      ) |>
+      analyze("AEBODSYS",
+              afun = table_count_once_per_id1,
+              show_labels = "hidden",
+              indent_mod = 0,
+              na_str = "") |>
+      analyze("AEDECOD",
+              afun = table_count_once_per_id,
+              show_labels = "hidden",
+              indent_mod = 1,
+              na_str = "") |>
+      build_table(adae, alt_counts_df = adsl) |> 
+      trim_rows() |>
+      sort_at_path(
+        c("AEBODSYS", "*", "AEBODSYS"),
+        scorefun = score_occurrences,
+        decreasing = TRUE
+        ) |>
+      sort_at_path(
+        c("AEBODSYS", "*", "AEDECOD"),
+        scorefun =score_occurrences,
+        decreasing = TRUE
+        )
+  )
+  adae_soc_pt
+}
+
+
+# PT Table function
+pt <- function(adae, adsl) {
+  
+  # Table cell for SOC PT  table
+  table_count_once_per_id <- function(df, termvar = "AEDECOD", idvar = "USUBJID", .N_col) {
+    term_vals <- df[[termvar]]
+    id_vals <- df[[idvar]]
+
+    unique_df <- df[!duplicated(paste(id_vals, term_vals)), ] # Count Participant only once per PT
+    term_counts <- table(unique_df[[termvar]])
+    event_counts <- table(term_vals)
+
+    formatted <- mapply(function(n, events, label) { # Format as "xx (xx.x%)"
+      pct <- (n / .N_col)*100
+      rcell(c(n, pct, events), format = sprintf_format("%d (%.1f%%) [%d]"))
+    }, n = term_counts, events = event_counts, label = names(term_counts), SIMPLIFY = FALSE)
+
+    in_rows(.list = formatted)
+  }
+  
+  
+  if(any(grepl("Not Coded", adae$AEDECOD))){
+    adae_pt <- rbind(
+    basic_table(show_colcounts = TRUE) |>
+      split_cols_by("COHORT") |>
+      add_overall_col(label = "All Cohorts") |>
+      analyze("USUBJID",
+              afun = s_events_patients,
+              section_div = "") |>
+      build_table(adae,
+                  alt_counts_df = adsl),
+
+    basic_table(show_colcounts = TRUE) |>
+      split_cols_by("COHORT") |>
+      add_overall_col(label = "All Cohorts") |>
+      analyze("AEDECOD",
+              afun = table_count_once_per_id,
+              show_labels = "hidden",
+              indent_mod = 1) |>
+      build_table(adae |>
+                    filter(!grepl("Not Coded", AEDECOD)),
+                  alt_counts_df = adsl) |>
+      sort_at_path(path = c("AEDECOD"),
+                   scorefun = score_occurrences),
+
+    basic_table(show_colcounts = TRUE) |> # Handling Not Coded terms separately
+      split_cols_by("COHORT") |>
+      add_overall_col(label = "All Cohorts") |>
+      analyze("AEDECOD",
+              afun = table_count_once_per_id,
+              show_labels = "hidden",
+              indent_mod = 1) |>
+      build_table(adae |>
+                    filter(grepl("Not Coded", AEDECOD)),
+                  alt_counts_df = adsl) 
+    
+    # |>
+    #   sort_at_path(path = c("AEDECOD"),
+    #                scorefun = score_occurrences)
+  ) |>
+    trim_rows()
+  } else {
+    adae_pt <- rbind(
+    basic_table(show_colcounts = TRUE) |>
+      split_cols_by("COHORT") |>
+      add_overall_col(label = "All Cohorts") |>
+      analyze("USUBJID",
+              afun = s_events_patients,
+              section_div = "",
+              na_str = "") |>
+      build_table(adae,
+                  alt_counts_df = adsl),
+
+    basic_table(show_colcounts = TRUE) |>
+      split_cols_by("COHORT") |>
+      add_overall_col(label = "All Cohorts") |>
+      analyze("AEDECOD",
+              afun = table_count_once_per_id,
+              show_labels = "hidden",
+              indent_mod = 1,
+              na_str = "") |>
+      build_table(adae |>
+                    filter(!grepl("Not Coded", AEDECOD)),
+                  alt_counts_df = adsl) |>
+      sort_at_path(path = c("AEDECOD"),
+                   scorefun = score_occurrences)
+  ) |>
+    trim_rows()
+  }
+
+  adae_pt
+}
+
+
+# Empty Table
+empty_table <- data.frame(Message = "No Eligible Participants") |>
+  gt() |>
+  cols_label(Message = "") |>
+  tab_style(
+    style = cell_text(weight = "bold", align = "center"),
+    locations = cells_body()
+  ) |>
+  tab_options(
+    table.width = pct(50),
+    table.align = "center",
+    column_labels.hidden = TRUE
+  )
+```
+
+### Summary of Treatment-Emergent Adverse Events
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+s_events_patients <- function(x, row_label = "Row", .N_col, ...) {
+  in_rows(.list = setNames(list(
+    rcell(
+      c(length(unique(x)),
+        100 * length(unique(x)) / .N_col,
+        length(x)),
+      format = sprintf_format("%d (%.1f%%) [%d]")
+    )
+  ), row_label))
+}
+
+summae <- rbind(
+  basic_table(show_colcounts = TRUE) |>
+    split_cols_by("COHORT") |>
+    add_overall_col(label = "All Cohorts") |> 
+
+    # TEAE
+    analyze("USUBJID_TEAE",
+            afun = s_events_patients,
+            extra_args  = list(row_label = "Participants with at least one TEAE"),
+            show_labels = "hidden"
+    ) |>
+    # Study Intervention-Related TEAE
+    analyze("USUBJID_SIRTEAE",
+            afun = s_events_patients,
+            extra_args  = list(row_label = "Study Intervention-Related TEAE"),
+            show_labels = "hidden",
+            indent_mod = 1
+            # ,
+            # section_div = ""
+    ) |> 
+    # Protocol Procedure-Related TEAE
+    analyze("USUBJID_PPRTEAE",
+            afun = s_events_patients,
+            extra_args  = list(row_label = "Protocol Procedure-Related TEAE"),
+            show_labels = "hidden"
+            # ,
+            # section_div = ""
+    ) |>
+    # Serious TEAE
+    analyze("USUBJID_STEAE",
+            afun = s_events_patients,
+            extra_args  = list(row_label = "Serious TEAE"),
+            show_labels = "hidden",
+    ) |>
+    # Study Intervention-Related Serious TEAE
+    analyze("USUBJID_SIRSTEAE",
+            afun = s_events_patients,
+            extra_args  = list(row_label = "Study Intervention-Related Serious TEAE"),
+            show_labels = "hidden",
+            indent_mod = 1
+            # ,
+            # section_div = ""
+    ) |> 
+    build_table(allaesumm, alt_counts_df = safflds),
+  
+  basic_table(show_colcounts = TRUE) |>
+    split_cols_by("COHORT") |>
+    add_overall_col(label = "All Cohorts") |> 
+    
+    # TEAE by Maximum Severity
+    count_occurrences_by_grade(
+      var = "AETOXGR",
+      var_labels = "TEAE by Maximum Severity",
+      show_labels = "visible"
+      # ,
+      # section_div = ""
+    ) |>
+    # AESI
+    analyze("USUBJID_AESI",
+            afun = s_events_patients,
+            extra_args  = list(row_label = "AESI"),
+            show_labels = "hidden",
+    ) |>
+    # Infusion related reaction (moderate or severe), including allergic reactions and anaphylaxis
+    analyze("USUBJID_AESI2",
+            afun = s_events_patients,
+            extra_args  = list(row_label = "Infusion related reaction (moderate or severe), including allergic reactions and anaphylaxis"),
+            show_labels = "hidden",
+            indent_mod = 1
+    ) |> 
+    # ALT or AST >3x ULN
+    analyze("USUBJID_AESI3",
+            afun = s_events_patients,
+            extra_args  = list(row_label = "ALT or AST >3x ULN"),
+            show_labels = "hidden",
+            indent_mod = 1
+    ) |> 
+    # Total bilirubin >1.5x ULN
+    analyze("USUBJID_AESI4",
+            afun = s_events_patients,
+            extra_args  = list(row_label = "Total bilirubin >1.5x ULN"),
+            show_labels = "hidden",
+            indent_mod = 1
+            # ,
+            # section_div = ""
+    ) |> 
+    # TEAE Leading to Dose Reduction
+    # analyze("USUBJID_DRED",
+    #         afun = s_events_patients,
+    #         extra_args  = list(row_label = "TEAE Leading to Dose Reduction"),
+    #         show_labels = "hidden",
+    # ) |>
+    # TEAE Leading to Early Discontinuation of Study Intervention
+    analyze("USUBJID_DISC",
+            afun = s_events_patients,
+            extra_args  = list(row_label = "TEAE Leading to Early Discontinuation of Study Intervention"),
+            show_labels = "hidden",
+    ) |>
+    build_table(allaesumm, alt_counts_df = safflds)
+)
+
+summae  %>%
+  tt_to_df1() %>%
+  mutate(across(1, ~str_replace_all(., "%", "\\\\%"))) %>%
+  mutate(across(everything(), trimws)) %>%
+  kable(booktabs = TRUE,
+        escape = FALSE,
+        col.names = names(.),
+        align = paste0("l", strrep("c", ncol(.) - 1))
+  )
+```
+
+\footnotesize Note: n(%)\[events\]
+
+\par
+
+\newpage
+
+### Treatment-Emergent Adverse Events by System Organ Class and Preferred Term
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+s_events_patients <- function(x, labelstr, .N_col) {
+  in_rows(
+    "Participants with at least one TEAE" =
+      rcell(c(
+  length(unique(x)), 
+  (length(unique(x)) / .N_col)*100,
+  length(x)
+  ), 
+  format = sprintf_format("%d (%.1f%%) [%d]")
+    )
+  )
+}
+
+teae_soc_pt <- soc_pt(teae |> 
+                        mutate(AEDECOD = as.factor(AEDECOD),
+                               AEBODSYS = as.factor(AEBODSYS)), 
+                      safflds) # TEAE SOC PT Table
+
+teae_soc_pt |> 
+  tt_to_df1() %>% 
+  mutate(across(1, ~str_replace_all(., "%", "\\\\%"))) %>%
+  mutate(across(everything(), trimws)) %>%
+  kable(booktabs = TRUE,
+        escape = FALSE,
+        col.names = names(.),
+        align = paste0("l", strrep("c", ncol(.) - 1))
+  )
+```
+
+\footnotesize Note: n(%)\[events\]
+
+\par
+
+\newpage
+
+### Treatment-Related Adverse Events by System Organ Class and Preferred Term​
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+ae_rel <- allae |> 
+  filter(AEREL == "Related") 
+
+s_events_patients <- function(x, labelstr, .N_col) {
+  in_rows(
+    "Participants with at least one Study Intervention-Related AE" =
+      rcell(c(
+  length(unique(x)), 
+  (length(unique(x)) / .N_col)*100,
+  length(x)
+  ), 
+  format = sprintf_format("%d (%.1f%%) [%d]")
+    )
+  )
+}
+
+ae_rel_soc_pt <- soc_pt(ae_rel, safflds) 
+
+ae_rel_soc_pt %>% 
+  tt_to_df1() %>% 
+  mutate(across(1, ~str_replace_all(., "%", "\\\\%"))) %>%
+  mutate(across(everything(), trimws)) %>%
+  kable(booktabs = TRUE,
+        escape = FALSE,
+        col.names = names(.),
+        align = paste0("l", strrep("c", ncol(.) - 1))
+  )
+```
+
+\footnotesize Note: n(%)\[events\]
+
+\par
+
+\newpage
+
+### Treatment-Emergent Adverse Events \>= Grade 3 by System Organ Class and Preferred Term
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+teae_ge3 <- teae |> 
+  filter(AETOXGRN >= 3) 
+
+s_events_patients <- function(x, labelstr, .N_col) {
+  in_rows(
+    "Participants with at least one Treatment Emergent AE (CTCAE Grade >= 3)" =
+      rcell(c(
+  length(unique(x)), 
+  (length(unique(x)) / .N_col)*100,
+  length(x)
+  ), 
+  format = sprintf_format("%d (%.1f%%) [%d]")
+    )
+  )
+}
+
+teae_ge3_soc_pt <- soc_pt(teae_ge3, safflds) # TEAE AESI SOC PT Table
+
+teae_ge3_soc_pt |> 
+  tt_to_df1() %>% 
+  mutate(across(1, ~str_replace_all(., "%", "\\\\%"))) %>%
+  mutate(across(everything(), trimws)) %>%
+  kable(booktabs = TRUE,
+        escape = FALSE,
+        col.names = names(.),
+        align = paste0("l", strrep("c", ncol(.) - 1))
+  )
+```
+
+\footnotesize Note: n(%)\[events\]
+
+\par
+
+\newpage
+
+### Serious Treatment-Emergent Adverse Events by System Organ Class and Preferred Term
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+teae_sae <- teae |> 
+  filter(AESER == "Yes")
+
+s_events_patients <- function(x, labelstr, .N_col) {
+  in_rows(
+    "Participants with at least one Treatment Emergent SAE" =
+      rcell(c(
+  length(unique(x)), 
+  (length(unique(x)) / .N_col)*100,
+  length(x)
+  ), 
+  format = sprintf_format("%d (%.1f%%) [%d]")
+    )
+  )
+}
+
+teae_sae_soc_pt <- soc_pt(teae_sae, safflds) # TEAE SAE SOC PT Table
+
+teae_sae_soc_pt |> 
+  tt_to_df1() %>% 
+  mutate(across(1, ~str_replace_all(., "%", "\\\\%"))) %>%
+  mutate(across(everything(), trimws)) %>%
+  kable(booktabs = TRUE,
+        escape = FALSE,
+        col.names = names(.),
+        align = paste0("l", strrep("c", ncol(.) - 1))
+  )
+```
+
+\footnotesize Note: n(%)\[events\]
+
+\par
+
+\newpage
+
+### Treatment-Emergent Adverse Events Leading to Discontinuation by System Organ Class and Preferred Term​
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+teae_disc <- teae |> 
+  filter(AEACN == "Drug withdrawn") 
+
+s_events_patients <- function(x, labelstr, .N_col) {
+  in_rows(
+    "Participants with at least one Treatment Emergent AE Leading to Discontinuation of Study Intervention" =
+      rcell(c(
+  length(unique(x)), 
+  (length(unique(x)) / .N_col)*100,
+  length(x)
+  ), 
+  format = sprintf_format("%d (%.1f%%) [%d]")
+    )
+  )
+}
+
+teae_disc_soc_pt <- soc_pt(teae_disc, safflds) # TEAE Rel SOC PT Table
+
+teae_disc_soc_pt <- tt_to_df1(teae_disc_soc_pt) 
+
+collabels <- setNames(
+  lapply(names(teae_disc_soc_pt), function(nm) html(str_replace(nm, "\\(", " ("))),
+  names(teae_disc_soc_pt)
+)
+
+collabels_cent <- colnames(teae_disc_soc_pt)[-1]
+
+if(nrow(teae_disc_soc_pt) <= 1){
+  empty_table
+} else {
+  soc_pt(teae_disc, safflds) |> 
+    tt_to_df1() %>% 
+  mutate(across(1, ~str_replace_all(., "%", "\\\\%"))) %>%
+  mutate(across(everything(), trimws)) %>%
+  kable(booktabs = TRUE,
+        escape = FALSE,
+        col.names = names(.),
+        align = paste0("l", strrep("c", ncol(.) - 1))
+  )
+}
+```
+
+\newpage
+
+### Overall Summary of Treatment Emergent IRR Events
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+simple_analysisPCT <- function(x, .N_col){
+  tbl <- table(x, useNA = "ifany")
+  in_rows(
+    .list = lapply(
+      names(tbl),
+      function(levels){
+        rcell(
+          c(
+            tbl[[levels]],
+            tbl[[levels]]/.N_col
+          ),
+          format = "xx (xx.x%)"
+        )
+      }
+    ),
+    .labels = names(tbl)
+  ) 
+}
+
+
+sumirrteae <- rbind(
+  
+  basic_table(show_colcounts = TRUE) |>
+    split_cols_by("COHORT") |>
+    add_overall_col(label = "All Cohorts") |> 
+    # TEAE
+    summarize_num_patients(
+      var = "USUBJID",
+      .stats = "unique",
+      .labels = "Participants with at least one TEAE IRR Event"
+    ) |> 
+    # Treatment-related TEAE
+    count_patients_with_event(
+      "USUBJID",
+      filters = c("AEREL" = "Related"),
+      .labels = "Treatment-related TEAE",
+      .indent_mods = 0
+    ) |> 
+    # Serious TEAE
+    count_patients_with_event(
+      var = "USUBJID",
+      filters = c("AESER" = "Yes"),
+      .labels = "Serious TEAE",
+      .indent_mods = -1
+    ) |> 
+    # Study Intervention-Related Serious TEAE
+    count_patients_with_event(
+      var = "USUBJID",
+      filters = c("AESER" = "Yes", "AEREL" = "Related"),
+      .labels = "Study Intervention-Related Serious TEAE",
+      .indent_mods = 0
+    ) |> 
+    # Fatal TEAE
+    count_patients_with_event(
+      var = "USUBJID",
+      filters = c("AEOUT" = "Fatal"),
+      .labels = "Fatal TEAE",
+      .indent_mods = -1
+    ) |> 
+    # Study Intervention-Related Fatal TEAE
+    count_patients_with_event(
+      var = "USUBJID",
+      filters = c("AEOUT" = "Fatal", "AEREL" = "Related"),
+      .labels = "Study Intervention-Related Fatal TEAE",
+      .indent_mods = 0
+    ) |> 
+    build_table(teaeirr, alt_counts_df = safflds),
+  
+  basic_table(show_colcounts = TRUE) |>
+    split_cols_by("COHORT") |>
+    add_overall_col(label = "All Cohorts") |> 
+    # TEAE by Maximum Severity
+    count_occurrences_by_grade(
+      var = "AESEV",
+      var_labels = "TEAE by Maximum Severity",
+      show_labels = "visible",
+      .indent_mods = 0
+    ) |>
+    # TEAE Leading to Discontinuation of Study Intervention
+    count_patients_with_event(
+      var = "USUBJID",
+      filters = c("AEACN" = "Drug withdrawn"),
+      .labels = "TEAE Leading to Discontinuation of Study Intervention",
+      .indent_mods = 0
+    ) |>
+    # TEAE Leading to Dose Reduction
+    # count_patients_with_event(
+    #   var = "USUBJID",
+    #   filters = c("AEACN" = "Dose reduced"),
+    #   .labels = "TEAE Leading to Dose Reduction",
+    #   .indent_mods = 0
+    # ) |>
+    # TEAE Leading to Dose Interruption
+    count_patients_with_event(
+      var = "USUBJID",
+      filters = c("AEACN" = "Drug interrupted"),
+      .labels = "TEAE Leading to Dose Interruption",
+      .indent_mods = 0
+    ) |>
+    build_table(teaeirr, alt_counts_df = safflds)
+  
+)
+
+sumirrteae %>%
+  tt_to_df1() %>%
+  mutate(across(1, ~str_replace_all(., "%", "\\\\%"))) %>%
+  mutate(across(everything(), trimws)) %>%
+  kable(booktabs = TRUE,
+        escape = FALSE,
+        col.names = names(.),
+        align = paste0("l", strrep("c", ncol(.) - 1))
+  )
+```
+
+\newpage
+
+### Moderate to Severe IRR Event AESIs by System Organ Class and Preferred Term​
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+aesi_irr <- teae |> 
+  filter(AESEV %in% c("Mild", "Moderate") & AESI == "Yes" & AEDECOD %in% "Infusion related reaction") 
+
+s_events_patients <- function(x, labelstr, .N_col) {
+  in_rows(
+    "Participants with at least one Mild or Moderate IRR Event AESI" =
+      rcell(c(
+  length(unique(x)), 
+  (length(unique(x)) / .N_col)*100,
+  length(x)
+  ), 
+  format = sprintf_format("%d (%.1f%%) [%d]")
+    )
+  )
+}
+
+aesi_irr_soc_pt <- soc_pt(aesi_irr, safflds) # TEAE AESI SOC PT Table
+
+aesi_irr_soc_pt |> 
+  tt_to_df1() %>% 
+  mutate(across(1, ~str_replace_all(., "%", "\\\\%"))) %>%
+  mutate(across(everything(), trimws)) %>%
+  kable(booktabs = TRUE,
+        escape = FALSE,
+        col.names = names(.),
+        align = paste0("l", strrep("c", ncol(.) - 1))
+  )
+```
+
+\footnotesize Note: n(%)\[events\]
+
+\par
+
+\newpage
+
+### Moderate to severe Non-IRR Event AESIs by System Organ Class and Preferred Term​
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+aesi_nirr <- teae |> 
+  filter(AESEV %in% c("Mild", "Moderate") & AESI == "Yes" & !AEDECOD %in% "Infusion related reaction") 
+
+s_events_patients <- function(x, labelstr, .N_col) {
+  in_rows(
+    "Participants with at least one Mild or Moderate Non-IRR Event AESI" =
+      rcell(c(
+  length(unique(x)), 
+  (length(unique(x)) / .N_col)*100,
+  length(x)
+  ), 
+  format = sprintf_format("%d (%.1f%%) [%d]")
+    )
+  )
+}
+
+aesi_nirr_soc_pt <- soc_pt(aesi_nirr, safflds) # TEAE AESI SOC PT Table
+
+if(nrow(aesi_nirr) == 0){
+  empty_table
+} else {
+  aesi_nirr_soc_pt |> 
+  tt_to_df1() %>% 
+  mutate(across(1, ~str_replace_all(., "%", "\\\\%"))) %>%
+  mutate(across(everything(), trimws)) %>%
+  kable(booktabs = TRUE,
+        escape = FALSE,
+        col.names = names(.),
+        align = paste0("l", strrep("c", ncol(.) - 1))
+  )
+}
+```
+
+\newpage
+
+### Treatment Emergent AE Summary by MedDRA Preferred Term (Sorted by Number of Events)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+s_events_patients <- function(x, labelstr, .N_col) {
+  in_rows(
+    "Participants with at least one TEAE" =
+      rcell(c(
+  length(unique(x)), 
+  (length(unique(x)) / .N_col)*100,
+  length(x)
+  ), 
+  format = sprintf_format("%d (%.1f%%) [%d]")
+    )
+  )
+}
+
+teae_pt <- pt(teae |> 
+                mutate(AEDECOD = as.factor(AEDECOD),
+                       AEBODSYS = as.factor(AEBODSYS),
+                       COHORT = factor(COHORT, levels = cohfact)), 
+              safflds) # TEAE PT Table
+
+teae_pt |> 
+  tt_to_df1() %>% 
+  mutate(across(everything(), ~ ifelse(trimws(.) == "0 (0.0) [0]", "", .))) %>% 
+  mutate(across(1, ~str_replace_all(., "%", "\\\\%"))) %>%
+  mutate(across(everything(), trimws)) %>%
+  kable(booktabs = TRUE,
+        escape = FALSE,
+        col.names = names(.),
+        align = paste0("l", strrep("c", ncol(.) - 1))
+  )
+```
+
+\footnotesize Note: n(%)\[events\]
+
+\par
+
+\newpage
+
+### Treatment Emergent IRR Symptoms Summary by MedDRA Preferred Term
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+s_events_patients <- function(x, labelstr, .N_col) {
+  in_rows(
+    "Participants with at least one IRR" = 
+      rcell(c(
+  length(unique(x)), 
+  (length(unique(x)) / .N_col)*100,
+  length(x)
+  ), 
+  format = sprintf_format("%d (%.1f%%) [%d]")
+    )
+  )
+}
+
+irrteae <- irr |> 
+  mutate(IRTERM_PT = ifelse(is.na(IRTERM_PT), 
+                            paste0("Not Coded* (", IRTERM, ")"),
+                            IRTERM_PT)) |> 
+  left_join(safflds) |> 
+  mutate(AEDECOD = as.factor(IRTERM_PT),
+         AEBODSYS = as.factor(IRTERM_SOC),
+         COHORT = factor(COHORT, levels = cohfact))
+
+irrteae_pt <- pt(irrteae, safflds) # TEAE PT Table
+
+irrteae_pt |> 
+  tt_to_df1() |>  
+  mutate(across(everything(), ~ ifelse(trimws(.) == "0 (0.0) [0]", "", .))) %>% 
+  mutate(across(1, ~str_replace_all(., "%", "\\\\%"))) %>%
+  mutate(across(everything(), trimws)) %>%
+  kable(booktabs = TRUE,
+        escape = FALSE,
+        col.names = names(.),
+        align = paste0("l", strrep("c", ncol(.) - 1))
+  )
+```
+
+\footnotesize Note: n(%)\[events\]
+
+\par
+
+\newpage
+
+### Serious Adverse Events Summary by Participant
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+aesumvars <- c("Participant ID, Cohort, Age(months)/Sex", 
+               "AEID",
+               "SYSTEM ORGAN CLASS, Preferred Term, Term",
+               "S: Start Date(Day), E: End Date(Day)",
+               "CTCAE Grading, Seriousness",
+               "Action Taken D: DNL126, A: AE",
+               "Outcome",
+               "Relationship D: DNL126, P: Protocol Procedure")
+
+saesumm <- allae %>% 
+  filter(AESER == "Yes") %>% 
+  select(aesumvars) %>% 
+  distinct() %>% 
+  kable(format = "latex",
+          booktabs = TRUE,
+          escape = FALSE,
+          longtable = TRUE
+    ) %>%
+    kable_styling(
+      latex_options = c("repeat_header")   # <— repeat header on each page
+    )
+
+saesumm |>
+  column_spec(1, width = "2cm") |>
+  column_spec(2, width = "1cm") |>
+  column_spec(3, width = "4.5cm") |>
+  column_spec(4, width = "3cm") |>
+  column_spec(5, width = "3cm") |>
+  column_spec(6, width = "3cm") |>
+  column_spec(7, width = "3cm") |>
+  column_spec(8, width = "2.8cm")
+```
+
+\newpage
+
+### Treatment-Emergent Adverse Events \>= Grade 3 Summary by Participant
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+sevtaesumm <- teae %>%
+  filter(AETOXGR %in% c("Grade 3", "Grade 4", "Grade 5")) %>%
+  select(aesumvars) %>% 
+  distinct() %>% 
+  kable(format = "latex",
+          booktabs = TRUE,
+          escape = FALSE,
+          longtable = TRUE
+    ) %>%
+    kable_styling(
+      latex_options = c("repeat_header")   # <— repeat header on each page
+    )
+
+sevtaesumm |>
+  column_spec(1, width = "2cm") |>
+  column_spec(2, width = "1cm") |>
+  column_spec(3, width = "4.5cm") |>
+  column_spec(4, width = "3cm") |>
+  column_spec(5, width = "3cm") |>
+  column_spec(6, width = "3cm") |>
+  column_spec(7, width = "3cm") |>
+  column_spec(8, width = "2.8cm")
+```
+
+\newpage
+
+### Moderate to Severe IRR AESIs Summary by Participant
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+modirrsumm <- allae %>%
+  filter(AESEV %in% c("Mild", "Moderate") & AESI == "Yes" & (AEDECOD %in% "Infusion related reaction"|AETERM %in% "IRR")) %>%
+  select(aesumvars) %>% 
+  distinct() %>% 
+  kable(format = "latex",
+          booktabs = TRUE,
+          escape = FALSE,
+          longtable = TRUE
+    ) %>%
+    kable_styling(
+      latex_options = c("repeat_header")   # <— repeat header on each page
+    )
+
+modirrsumm |>
+  column_spec(1, width = "2cm") |>
+  column_spec(2, width = "1cm") |>
+  column_spec(3, width = "4.5cm") |>
+  column_spec(4, width = "3cm") |>
+  column_spec(5, width = "3cm") |>
+  column_spec(6, width = "3cm") |>
+  column_spec(7, width = "3cm") |>
+  column_spec(8, width = "2.8cm")
+```
+
+\newpage
+
+### Moderate to Severe Non-IRR AESIs Summary by Participant
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+modnirrsumm <- allae %>%
+  filter(AESEV %in% c("Mild", "Moderate") & AESI == "Yes" & !(AEDECOD %in% "Infusion related reaction"|AETERM %in% "IRR")) %>% 
+select(aesumvars) %>% 
+  distinct() %>% 
+  kable(format = "latex",
+          booktabs = TRUE,
+          escape = FALSE,
+          longtable = TRUE
+    ) %>%
+    kable_styling(
+      latex_options = c("repeat_header")   # <— repeat header on each page
+    )
+
+
+if(nrow( allae %>%
+  filter(AESEV %in% c("Mild", "Moderate") & AESI == "Yes" & !AEDECOD %in% "Infusion related reaction")) == 0) {
+  empty_table
+} else {
+  modnirrsumm |>
+  column_spec(1, width = "2cm") |>
+  column_spec(2, width = "1cm") |>
+  column_spec(3, width = "4.5cm") |>
+  column_spec(4, width = "3cm") |>
+  column_spec(5, width = "3cm") |>
+  column_spec(6, width = "3cm") |>
+  column_spec(7, width = "3cm") |>
+  column_spec(8, width = "2.8cm")
+}
+```
+
+\newpage
+
+## Safety Lab **Trend Plot with Outlier Indicators**
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+cent <- central_lab |> 
+  mutate(PARAM = ifelse(!is.na(LBORRESU), paste0(LBTEST, " (", LBORRESU, ")"), LBTEST),
+         LBORRES = gsub("[<>]", "", LBORRES),
+         LBORRES = as.numeric(LBORRES),
+         LBDT = as.Date(LBDT)) |> 
+  distinct(Subject = SUBJID, VISIT, ADT = LBDT, CAT = LBCAT, PARAM, TEST = LBTEST, IND = LBNRIND, AVAL = LBORRES, LOW = LBORNRLO, HIGH = LBORNRHI) |> 
+  left_join(safflds) |> 
+  filter(!is.na(COHORT) &!is.na(AVAL)) |> 
+  # filter(!is.na(LBORRES) & !grepl("Unscheduled|Screening", VISIT)) |> 
+  left_join(ex |> distinct(Subject, InstanceName, EXSTDAT),
+            by = c("Subject", "ADT" = "EXSTDAT")) |> 
+  left_join(ex_EXSTDT) |>
+  mutate(UNSC = ifelse(grepl("unschedu", VISIT, ignore.case = TRUE), "Y", NA_character_),
+         VISIT = ifelse(grepl("unschedu", VISIT, ignore.case = TRUE), InstanceName, VISIT),
+         DT = ADT) |> 
+  derive_vars_dy(TRTSDT, exprs(DT)) |> 
+  mutate(VISIT1 = ifelse(DY > 0, paste0("Week ", ceiling(DY/7)), paste0("Week ", floor(DY/7))),
+         VISIT =  ifelse(is.na(VISIT), VISIT1, VISIT)) |>
+  group_by(PARAM) |> 
+  mutate(LOW_coh = min(LOW, na.rm = TRUE),
+         HIGH_coh = max(HIGH, na.rm = TRUE),
+         INDNULL = ifelse(all(is.na(LOW)) & all(is.na(HIGH)), "Not Defined", NA_character_), 
+  ) |> 
+  ungroup() |> 
+  mutate(IND = ifelse(INDNULL %in% "Not Defined", INDNULL, IND),
+         VISIT = ifelse(grepl("Screening", VISIT), VISIT1, VISIT),
+         VISIT = gsub("Week", "Wk", VISIT),
+         VISIT = gsub("Baseline", "BL", VISIT),
+         VISITNUM = parse_number(VISIT),
+         VISITNUM = ifelse(VISIT == "BL", 0, VISITNUM),
+         IND = factor(IND, levels = c("NORMAL", "LOW", "HIGH", "Not Defined")),
+         COHORT = factor(COHORT, levels = cohfact)
+  ) |> 
+  select(-InstanceName, -VISIT1) |> 
+  arrange(COHORT, Subject, PARAM, VISITNUM, AVAL)
+
+# Plot
+paramplot <- function(df, 
+                      param,
+                      label_low  = "Minimum Lower Reference Range",
+                      label_high = "Maximum Upper Reference Range"){
+
+  df <- df |> filter(PARAM %in% param)
+  
+  color_palette <- c(
+    "#E69F00", # orange
+    "#56B4E9", # sky blue
+    "#009E73", # bluish green
+    "#F0E442", # yellow
+    "#0072B2", # blue
+    "#D55E00", # vermillion
+    "#CC79A7", # reddish purple
+    "#999999", # grey
+    "#332288", # dark blue
+    "#88CCEE", # light blue
+    "#44AA99", # green teal
+    "#117733", # dark green
+    "#DDCC77", # mustard
+    "#AA4499", # magenta
+    "#661100", # brown
+    "#6699CC", # steel blue
+    "#888888", # medium grey
+    "#1B9E77", # teal green (from ColorBrewer)
+    "#E7298A", # pink (from ColorBrewer)
+    "#A6761D" # olive brown
+  )
+  
+  
+  low_ref <- ifelse(!all(is.na(df$LOW_coh)), unique(df$LOW_coh), NA)
+  high_ref <- unique(df$HIGH_coh)
+  
+  plot <- ggplot(df,
+         aes(
+           x = VISITNUM,
+           y = AVAL,
+           group = Subject,
+           colour = Subject,
+           linetype = COHORT
+         )
+  ) +
+    geom_point(aes(shape = IND, size = 5)) +
+    geom_line() +
+    scale_x_continuous(breaks = c(unique(df$VISITNUM), 110) |> round_half_up() |> unique(), 
+                       limits = c(min(df$VISITNUM), 110)|> round_half_up(),
+                       labels = c(unique(df$VISIT), "Week 110")
+    ) +
+    scale_color_manual(values = color_palette) +
+    theme_bw() +
+    theme(
+      axis.title.x = element_text(face = "bold", size = 14),
+      axis.title.y = element_text(face = "bold", size = 14),
+      axis.text.x = element_text(face = "bold", size = 12, angle = 45, hjust = 1),
+      axis.text.y = element_text(face = "bold", size = 12),
+      
+      strip.text = element_text(face = "bold", size = 12),
+      strip.placement = "outside",
+      strip.background = element_blank(),
+      
+      legend.title = element_text(face = "bold", size = 12),
+      legend.text  = element_text(size = 12),
+      
+      legend.position = "bottom",
+      legend.box = "vertical",
+      legend.justification = "right",
+      legend.box.just = "right",
+      legend.spacing.y = unit(2, "pt"),
+      # legend.justification = c("right", "bottom"),
+      legend.background = element_rect(fill = NA, color = NA), 
+      
+      plot.title = element_text(face = "bold", size = 20), 
+      
+    ) +
+    scale_linetype_manual(
+      values = c(
+        "Cohort A1" = "solid",
+        "Cohort A2" = 22,
+        "Cohort A3" = 44,
+        "Cohort B1" = "dotdash"
+      )
+    ) +
+    scale_shape_manual(
+      values = c(
+        "HIGH" = 17,
+        "NORMAL" = 16,
+        "LOW" = 25,
+        "Not Defined" = 16
+      )
+    ) +
+    labs(
+      x = "Visit Name",
+      y = stringr::str_wrap("Original Results", 40L),
+      # title = unique(df$PARAM)
+      title = NULL
+    ) +
+    guides(
+      linetype = guide_legend(order = 1, title = NULL),  # Cohort
+      color    = guide_legend(order = 2,
+                              ncol = 8,
+                              title = NULL,
+                              override.aes = list(line = NA, 
+                                                  shape = 16, 
+                                                  size = 4,
+                                                  linetype = NA)),  # Subject
+      shape    = guide_legend(order = 3,
+                              title = "Normalized Indicator (Age & Gender)",
+                              override.aes = list(size = 4)),
+      size = "none"
+    )
+  
+  plot
+}
+
+
+# Listing
+paramlist <- function(df, param){
+  
+  df1 <- df |>
+    filter(PARAM %in% param & IND %in% c("LOW", "HIGH")) |> 
+    mutate(
+      LOW = ifelse(is.na(LOW), "-", as.character(LOW)),
+      HIGH = ifelse(is.na(HIGH), "-", as.character(HIGH)),
+      LOHI = paste0(LOW, "/", HIGH),
+      LOHI = ifelse(trimws(LOHI) == "/", "", LOHI)
+    )
+  
+  if("TPT" %in% names(df)){
+    df1 <- df1 |> 
+      select(
+        `Cohort` = COHORT,
+        `Participant ID` = Subject,
+        Category = CAT,
+        Parameter = PARAM,
+        Visit = VISIT,
+        Timepoint = TPT,
+        `Assessment Date` = ADT,
+        `Original Values` = AVAL,
+        `Lower/Upper Limit` = LOHI,
+        Indication = IND
+      )
+  } else {
+    df1 <- df1 |> 
+      select(
+        `Cohort` = COHORT,
+        `Participant ID` = Subject,
+        Category = CAT,
+        Parameter = PARAM,
+        Visit = VISIT,
+        `Assessment Date` = ADT,
+        `Original Values` = AVAL,
+        `Lower/Upper Limit` = LOHI,
+        Indication = IND
+      )
+  }
+  
+  kable(df1,
+        align = rep("c", ncol(df1))
+        # ,
+        # caption = paste0("\\textbf{", param, "}")
+  ) |>
+    row_spec(0, bold = TRUE) |>
+    kable_styling(font_size = 9,
+                  latex_options = c("striped", "hold_position"),
+                  position = "left") 
+}
+```
+
+### Biochemistry
+
+#### ALT/SGPT (U/L)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "ALT/SGPT (U/L)")
+```
+
+\newpage
+
+#### AST/SGOT (U/L)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "AST/SGOT (U/L)")
+```
+
+\newpage
+
+#### Blood Urea Nitrogen (mg/dL)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Blood Urea Nitrogen (mg/dL)")
+```
+
+\newpage
+
+#### Calcium (mmol/L)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Calcium (mmol/L)")
+```
+
+\newpage
+
+#### Chloride (mmol/L)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Chloride (mmol/L)")
+```
+
+\newpage
+
+#### Creatine kinase (U/L)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Creatine kinase (U/L)")
+```
+
+\newpage
+
+#### Creatinine (mg/dL)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Creatinine (mg/dL)")
+```
+
+\newpage
+
+#### Glucose (mmol/L)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Glucose (mmol/L)") +
+  plot_annotation(
+    caption = "Assessment performed in non-fasting state",
+    theme = theme(
+      plot.caption = element_text(hjust = 0, size = 10),
+      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
+    )
+  )
+```
+
+\newpage
+
+#### Potassium (mmol/L)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Potassium (mmol/L)")
+```
+
+\newpage
+
+#### Sodium (mmol/L)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Sodium (mmol/L)")
+```
+
+\newpage
+
+#### Total Bilirubin (mg/dL)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Total Bilirubin (mg/dL)")
+```
+
+\newpage
+
+#### Total Protein (g/L)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Total Protein (g/L)")
+```
+
+\newpage
+
+### Hematology
+
+#### Basophils; Absolute Units (/nL)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Basophils; Absolute Units (/nL)")
+```
+
+\newpage
+
+#### Eosinophils; Absolute Units (/nL)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Eosinophils; Absolute Units (/nL)")
+```
+
+\newpage
+
+#### Erythrocytes (/pL)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Erythrocytes (/pL)")
+```
+
+\newpage
+
+#### Hemoglobin (g/dL)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Hemoglobin (g/dL)")
+```
+
+\newpage
+
+#### Hematocrit (L/L)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Hematocrit (L/L)")
+```
+
+\newpage
+
+#### Leukocytes (/nL)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Leukocytes (/nL)")
+```
+
+\newpage
+
+#### Lymphocytes; Absolute Units (/nL)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Lymphocytes; Absolute Units (/nL)")
+```
+
+\newpage
+
+#### Monocytes; Absolute Units (/nL)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Monocytes; Absolute Units (/nL)")
+```
+
+\newpage
+
+#### Neutrophils; Absolute Units (/nL)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Neutrophils; Absolute Units (/nL)")
+```
+
+\newpage
+
+#### Platelets (/nL)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Platelets (/nL)")
+```
+
+\newpage
+
+#### Reticulocyte count; Absolute (/nL)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Reticulocyte count; Absolute (/nL)")
+```
+
+\newpage
+
+### Immune Response Biomarker
+
+#### C3c-Complement (g/L)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "C3c-Complement (g/L)")
+```
+
+\newpage
+
+#### C4 levels (mg/dL)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "C4 levels (mg/dL)")
+```
+
+\newpage
+
+#### C4-Complement (g/L)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "C4-Complement (g/L)")
+```
+
+\newpage
+
+#### CH50 (U/mL)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "CH50 (U/mL)")
+```
+
+\newpage
+
+#### Circulating Immune Complex Panel: C1q Binding (ug Eq/mL)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Circulating Immune Complex Panel: C1q Binding (ug Eq/mL)")
+```
+
+\newpage
+
+#### Circulating Immune Complex Panel: C3 Fragments (ug Eq/mL)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Circulating Immune Complex Panel: C3 Fragments (ug Eq/mL)")
+```
+
+\newpage
+
+#### Interleukin 6 (ng/L)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Interleukin 6 (ng/L)")
+```
+
+\newpage
+
+#### Total IgE (IU/mL)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Total IgE (IU/mL)")
+```
+
+\newpage
+
+#### Tryptase (ug/L)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Tryptase (ug/L)")
+```
+
+\newpage
+
+### Urine Chemistry
+
+#### Urine albumin (mg/L)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Urine albumin (mg/L)")
+```
+
+\newpage
+
+#### Urine creatinine (g/L)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Urine creatinine (g/L)")
+```
+
+\newpage
+
+#### Urine Albumin/Creatinine Ratio (mg/g crea)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(cent, "Urine Albumin/Creatinine Ratio (mg/g crea)")
+```
+
+\newpage
+
+### Evaluation of Drug-Induced Serious Hepatotoxicity (eDISH) Plot
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 12
+
+hy_dat <- cent |> 
+  filter(TEST %in% c("Total Bilirubin", "AST/SGOT", "ALT/SGPT", "Alkaline Phosphatase")) |> 
+  rename(ULN = HIGH) |> 
+  mutate(xULN = AVAL / ULN) |> 
+  select(Subject, COHORT, ADT, VISIT, VISITNUM, TEST, xULN) %>%
+  pivot_wider(names_from = TEST, values_from = xULN, values_fn = max) %>%
+  rename(
+    ALT  = `ALT/SGPT`,
+    BILI = `Total Bilirubin`,
+    AST  = `AST/SGOT`,
+    ALP  = `Alkaline Phosphatase`
+  ) |> 
+  filter(!is.na(ALT), !is.na(BILI))
+
+base_dates <- cent %>%
+  group_by(Subject) %>%
+  summarise(baseline_date = min(ADT, na.rm = TRUE), .groups = "drop")
+
+
+log_breaks <- c(0.1, 0.2, 0.5, 1, 2, 3, 5, 10, 20, 50, 100)
+lims <- c(0.1, 100) 
+
+alt_hy <- ggplot(hy_dat, aes(x = ALT, y = BILI)) +
+  geom_point(aes(color = Subject), alpha = 0.8, size = 2) +
+  geom_vline(xintercept = 3, color = "grey40") +
+  geom_hline(yintercept = 2, color = "grey40") +
+  scale_x_log10(limits = lims, breaks = log_breaks, minor_breaks = NULL) +
+  scale_y_log10(limits = lims, breaks = log_breaks, minor_breaks = NULL) +
+  coord_fixed(ratio = 1) +
+  labs(title = "ALT vs BILI (xULN)", x = "Alanine aminotransferase", y = "Total Bilirubin") +
+  annotate("text", x = 20, y = 90,   label = "Potential Hy's Law", fontface = 2) +
+  annotate("text", x = 20, y = 0.1, label = "Temple's Corollary",  fontface = 2) +
+  annotate("text", x = 0.5, y = 90,   label = "Cholestasis", fontface = 2) +
+  annotate("text", x = 0.3, y = 0.1,label = "Normal/Near-Normal", hjust = 0, vjust = 1, fontface = 2) +
+  guides(color = "none") +
+  theme_bw() +
+  theme(
+    plot.title  = element_text(face = "bold", size = 16, hjust = 0.5),
+    axis.title.x = element_text(face = "bold", size = 14),
+    axis.title.y = element_text(face = "bold", size = 14),
+    axis.text.x = element_text(face = "bold"), 
+    axis.text.y = element_text(face = "bold")   
+  )
+
+ast_hy <- ggplot(hy_dat, aes(x = AST, y = BILI)) +
+  geom_point(aes(color = Subject), alpha = 0.8, size = 2) +
+  geom_vline(xintercept = 3, color = "grey40") +
+  geom_hline(yintercept = 2, color = "grey40") +
+  scale_x_log10(limits = lims, breaks = log_breaks, minor_breaks = NULL) +
+  scale_y_log10(limits = lims, breaks = log_breaks, minor_breaks = NULL) +
+  coord_fixed(ratio = 1) +
+  labs(title = "AST vs BILI (xULN)", x = "Aspartate aminotransferase", y = "Total Bilirubin") +
+  annotate("text", x = 20, y = 90,   label = "Potential Hy's Law", fontface = 2) +
+  annotate("text", x = 20, y = 0.1, label = "Temple's Corollary",  fontface = 2) +
+  annotate("text", x = 0.5, y = 90,   label = "Cholestasis", fontface = 2) +
+  annotate("text", x = 0.3, y = 0.1,label = "Normal/Near-Normal", hjust = 0, vjust = 1, fontface = 2) +
+  # guides(color = "none") +
+  theme_bw() +
+  theme(
+    plot.title  = element_text(face = "bold", size = 16, hjust = 0.5),
+    axis.title.x = element_text(face = "bold", size = 14),
+    axis.title.y = element_text(face = "bold", size = 14),
+    axis.text.x = element_text(face = "bold"), 
+    axis.text.y = element_text(face = "bold")   
+  )
+
+
+hy_tab <- hy_dat |> 
+  filter(ALT >= 3 | AST >= 3)
+```
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+#| 
+foot <- paste("Near Normal (Total Bilirubin : ≤ 2xULN,  ALT/AST : ≤ 3xULN)", 
+              "Cholestasis (Total Bilirubin : > 2xULN,  ALT/AST : < 3xULN)",
+              "Hy's Law Quadrant (Total Bilirubin : > 2xULN, ALT/AST : > 3xULN)",
+              "Temple's Corollary (Total Bilirubin : <= 2xULN, ALT/AST : > 3xULN)",
+              "",
+              "Data points represent lab evaluations done at the same timepoint.",
+              sep = "\n")
+
+(alt_hy + ast_hy) +
+  plot_annotation(
+    caption = foot,
+    theme = theme(
+      plot.caption = element_text(hjust = 0, size = 10),
+      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
+    )
+  )
+```
+
+\newpage
+
+#### Participants in eDISH Hy's law quadrant
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+if(nrow(hy_tab) == 0){
+  empty_table
+}
+```
+
+## **ECG Trend Plot with Outlier Indicators**
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+eganr <- egrange |>
+  mutate(
+    AGEY_LO = as.numeric(ASAGEYR_LO),
+    AGEY_HI = as.numeric(ASAGEYR_HI),
+    PARAMCD = ifelse(PARAMCD %in% "EGHRMN", "HR", PARAMCD)
+  )
+
+ecgdat <- ecg |> 
+  inner_join(safflds) |> 
+  left_join(scr |> select(Subject, BRTHDT)) |> 
+  mutate(VISIT = ifelse(grepl("Week 25", FolderName), "Week 25", FolderName),
+         ADT = as.Date(EGDAT), 
+         TPT = case_when(EGTPT %in% "PRE_1" ~ "PRE-DOSE",
+                           EGTPT %in% "POSTDOSE" ~ "POST-DOSE",
+                           TRUE ~ NA_character_),
+         TPT1 = case_when(EGTPT %in% "PRE_1" ~ -0.25,
+                           EGTPT %in% "POSTDOSE" ~ 0.25,
+                           TRUE ~ NA_real_),
+         CAT = "ECG"
+         ) |> 
+  left_join(ex |> distinct(Subject, InstanceName1 = InstanceName, EXSTDAT),
+            by = c("Subject", "ADT" = "EXSTDAT")) |> 
+  left_join(ex_EXSTDT) |>
+  mutate(UNSC = ifelse(grepl("unschedu", VISIT, ignore.case = TRUE), "Y", NA_character_),
+         VISIT = ifelse(grepl("unschedu", VISIT, ignore.case = TRUE), InstanceName1, VISIT),
+         DT = ADT) |> 
+  derive_vars_dy(TRTSDT, exprs(DT)) |> 
+  mutate(VISIT1 = ifelse(DY > 0, paste0("Week ", ceiling(DY/7)), paste0("Week ", floor(DY/7))),
+         VISIT =  ifelse(is.na(VISIT), VISIT1, VISIT),
+         VISIT = ifelse(grepl("Screening", VISIT), VISIT1, VISIT),
+         VISIT = gsub("Week", "Wk", VISIT),
+         VISIT = gsub("Baseline", "BL", VISIT),
+         VISITNUM = parse_number(VISIT),
+         VISITNUM = ifelse(VISIT == "BL", 0, VISITNUM),
+         VISITNUM1 = VISITNUM,
+         VISITNUM = ifelse(!is.na(TPT), VISITNUM+TPT1, VISITNUM)
+  ) |> 
+  distinct(COHORT, Subject, CAT, VISIT, VISITNUM, VISITNUM1, TPT, ADT, BRTHDT, 
+         HR, PRAG, QRSAG, QTAG, QTCFAG) |> 
+  pivot_longer(cols = c("HR", "PRAG", "QRSAG", "QTAG", "QTCFAG"), 
+               names_to = "PARAMCD",
+               values_to = "AVAL") |> 
+  filter(!is.na(AVAL)) |> 
+  mutate(
+    AGEV = as.numeric((ADT - BRTHDT + 1) / 30.43750),
+    ASAGEYR = AGEV / 12) |> 
+  left_join(eganr,
+    by = "PARAMCD",
+    relationship = "many-to-many"
+  ) |>
+  filter(
+    # if no age bounds
+    (is.na(AGEY_LO) & is.na(AGEY_HI)) |
+      # if both age bounds
+      ((ASAGEYR) >= AGEY_LO & (ASAGEYR) < AGEY_HI) |
+      # if lower age bound only
+      ((ASAGEYR) >= AGEY_LO & is.na(AGEY_HI))
+  ) |>
+  derive_var_anrind() |> 
+  mutate(
+    PARAM = case_when(
+      PARAMCD == "HR" ~ "HR (beats/min)",
+      PARAMCD == "PRAG" ~ "PRAG (msecs)",
+      PARAMCD == "QRSAG" ~ "QRSAG (msecs)",
+      PARAMCD == "QTAG" ~ "QTAG (msecs)",
+      PARAMCD == "QTCFAG" ~ "QTCFAG (msecs)"
+    ),
+    LOW = ANRLO,
+    HIGH = ANRHI,
+    IND = ANRIND
+      ) |> 
+  group_by(PARAMCD) |> 
+  mutate(LOW_coh = min(LOW),
+         HIGH_coh = max(HIGH)) |> 
+  ungroup()
+```
+
+### Heart Rate (beats/min)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(ecgdat, "HR (beats/min)")
+```
+
+\newpage
+
+### Aggregate QRS Interval (msecs)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(ecgdat, "QRSAG (msecs)")
+```
+
+\newpage
+
+### Aggregate QTcF Interval (msecs)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(ecgdat, "QTCFAG (msecs)")
+```
+
+\newpage
+
+### Aggregate QT Interval (msecs)
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+paramplot(ecgdat, "QTAG (msecs)")
+```
+
+\newpage
+
+## Vital Signs **Trend Plot with Outlier Indicators**
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+
+vsanr <- vsrange |>
+  mutate(
+    AGEM_LO = as.numeric(AGE_LOWER),
+    AGEM_HI = as.numeric(AGE_UPPER)
+  )
+
+vsdat <- vs |> 
+  inner_join(safflds) |> 
+  left_join(scr |> select(Subject, BRTHDT)) |> 
+  mutate(VSTIM = str_pad(VSTIM, 5, "left", "0"),,
+         FolderName = ifelse(FolderName %in% "Week", InstanceName, FolderName),
+         VISIT = ifelse(grepl("Week 25", FolderName), "Week 25", FolderName),
+         VSDTC = ifelse(!is.na(VSTIM), 
+                        paste0(as.character(VSDAT), "T", VSTIM), 
+                        as.character(VSDAT)),
+         ADTM = convert_dtc_to_dtm(VSDTC),
+         ADT = convert_dtc_to_dt(VSDTC),
+         TPT = VSTPT1,
+         CAT = "VS"
+         # ,
+         # VISITNUM = parse_number(VISIT),
+         # VISITNUM = case_when(VISIT %in% "Baseline" ~ 0,
+         #                      VISIT %in% "Screening" ~ -1,
+         #                      TRUE ~ VISITNUM)
+         ) |> 
+  left_join(ex |> distinct(Subject, InstanceName1 = InstanceName, EXSTDAT),
+            by = c("Subject", "ADT" = "EXSTDAT")) |> 
+  left_join(ex_EXSTDT) |>
+  mutate(UNSC = ifelse(grepl("unschedu", VISIT, ignore.case = TRUE), "Y", NA_character_),
+         VISIT = ifelse(grepl("unschedu", VISIT, ignore.case = TRUE), InstanceName1, VISIT),
+         DT = ADT) |> 
+  derive_vars_dy(TRTSDT, exprs(DT)) |> 
+  mutate(VISIT1 = ifelse(DY > 0, paste0("Week ", ceiling(DY/7)), paste0("Week ", floor(DY/7))),
+         VISIT =  ifelse(is.na(VISIT), VISIT1, VISIT),
+         VISIT = ifelse(grepl("Screening", VISIT), VISIT1, VISIT),
+         VISIT = gsub("Week", "Wk", VISIT),
+         VISIT = gsub("Baseline", "BL", VISIT),
+         VISITNUM = parse_number(VISIT),
+         VISITNUM = ifelse(VISIT == "BL", 0, VISITNUM)
+  ) |> 
+  distinct(COHORT, Subject, CAT, VISIT, VISITNUM, TPT, ADT, ADTM, BRTHDT,
+           PULSE, RES, SYSBP, DIABP, PULSOX, TEMP = TEMP_STD) |> 
+  rename(RESP = RES, POX = PULSOX) |> 
+  pivot_longer(cols = c("PULSE", "RESP", "SYSBP", "DIABP", "POX", "TEMP"), 
+               names_to = "PARAMCD",
+               values_to = "AVAL") |> 
+  filter(!is.na(AVAL)) |> 
+  mutate(
+    AGEV = as.numeric((ADT - BRTHDT + 1) / 30.43750),
+    ASAGEYR = AGEV / 12) |> 
+  left_join(vsanr,
+            by = "PARAMCD",
+            relationship = "many-to-many"
+  ) |>
+  filter(
+
+    # no age bounds
+    is.na(AGEM_LO) & is.na(AGEM_HI) |
+
+      # both age bounds
+      (AGEV >= AGEM_LO & AGEV < AGEM_HI) |
+
+      # upper bound only
+      (is.na(AGEM_LO) & AGEV < AGEM_HI) |
+
+      # lower bound only
+      (AGEV >= AGEM_LO & is.na(AGEM_HI))
+  ) |>
+  derive_var_anrind() |> 
+  mutate(
+    PARAM = case_when(
+      PARAMCD == "PULSE" ~ "PULSE (beats/min)",
+      PARAMCD == "RESP" ~ "Resp Rate (msecs)",
+      PARAMCD == "SYSBP" ~ "SYSBP (mmHg)",
+      PARAMCD == "DIABP" ~ "DIABP (mmHg)",
+      PARAMCD == "POX" ~ "Pulse OX (spO2)",
+      PARAMCD == "TEMP" ~ "TEMP (C)"
+    ),
+    LOW = ANRLO,
+    HIGH = ANRHI,
+    IND = ANRIND
+  ) |> 
+  group_by(PARAMCD) |> 
+  mutate(LOW_coh = min(LOW),
+         HIGH_coh = max(HIGH)) |> 
+  ungroup() |> 
+  arrange(COHORT, Subject, PARAMCD, ADT, ADTM) |> 
+  filter(!VISIT %in% c("Baseline", "Screening"))
+
+vsdat <- vsdat |>
+  left_join(select(exvis, Subject, EXSTDT, EXSTDTC, EXVISIT = VISIT, EXVISITNUM = VISITNUM),
+            by = c("Subject", "ADT" = "EXSTDT")) |> 
+  mutate(ASTDTM = ifelse(!is.na(EXSTDTC), convert_dtc_to_dtm(EXSTDTC), NA),
+         VISITNUM = ifelse(grepl("unsch", VISIT, ignore.case = TRUE), EXVISITNUM, VISITNUM),
+         VISIT = ifelse(grepl("unsch", VISIT, ignore.case = TRUE), EXVISIT, VISIT),
+         AVISIT = VISIT, AVISITN = VISITNUM, ANRIND = IND, SUBJID = Subject,
+         hours_since_inf_start = as.numeric(difftime(ADTM, ASTDTM, units = "hours")),
+         hours_since_inf_start = ifelse(is.na(hours_since_inf_start), 0, hours_since_inf_start)
+         )
+
+# getting the last assessment before dosing
+vsdat1 <- vsdat |> 
+  arrange(Subject, PARAM, EXSTDTC, ADTM) |> 
+  filter(VISIT == "BL" | ADTM < convert_dtc_to_dtm(EXSTDTC)) |> 
+  group_by(Subject, PARAM, EXSTDTC) |> 
+  slice_tail(n = 1) |> 
+  ungroup() |> 
+  arrange(Subject, PARAM, VISITNUM)
+
+cut_points <- c(0, 50, 98, 146)  # Start points of each group (last point is right endpoint)
+labels <- c("Baseline - Visit 49", "Visits 50–97", "Visits 98–145")
+vsdat1$VISITGP<- cut(vsdat1$VISITNUM, breaks = cut_points, labels = labels, right = FALSE, include.lowest = TRUE)
+
+# vsdat49 <- vsdat |> filter(VISITNUM <= 49)
+# 
+# vsdat97 <- vsdat |> filter(VISITNUM > 49)
+
+# Create the plot ------------------------------------------------------------
+paramplot1 <- function(df, param){
+  
+  color_palette <- c(
+    "#E69F00", # orange
+    "#56B4E9", # sky blue
+    "#009E73", # bluish green
+    "#F0E442", # yellow
+    "#0072B2", # blue
+    "#D55E00", # vermillion
+    "#CC79A7", # reddish purple
+    "#999999", # grey
+    "#332288", # dark blue
+    "#88CCEE", # light blue
+    "#44AA99", # green teal
+    "#117733", # dark green
+    "#DDCC77", # mustard
+    "#AA4499", # magenta
+    "#661100", # brown
+    "#6699CC", # steel blue
+    "#888888", # medium grey
+    "#1B9E77", # teal green (from ColorBrewer)
+    "#E7298A", # pink (from ColorBrewer)
+    "#A6761D" # olive brown
+  )
+  
+  temp_list <- list()
+  plot_list <- list()
+  
+  df1 <- df |> 
+    filter(PARAM %in% param)
+  
+  cohort <- unique(df1$COHORT)
+  
+  avisit_df <- data.frame(AVISITN = c(1:97)) |>
+    mutate(
+      AVISIT = paste0("Week ", AVISITN)
+    )
+  
+  for (a in cohort) {
+    vec_sorted <- unique(sort(df1$AVISITN[df1$COHORT == a]))
+    sublists <- split(vec_sorted, ceiling(seq_along(vec_sorted) / 10))
+    
+    
+    temp_list <- lapply(sublists, function(visit) {
+      if (length(visit) < 10) {
+        min_visit <- min(visit)
+        max_visit <- max(visit)
+        
+        full_list <- seq(min_visit, min_visit + 9, by = 1)
+        
+        missing_visits <- full_list[!full_list %in% visit]
+        
+        filtered_anl <- filter(df1, AVISITN %in% visit, COHORT == a)
+        avisit_modified <- expand.grid(
+          SUBJID = filtered_anl$SUBJID,
+          AVISITN = avisit_df$AVISITN[avisit_df$AVISITN %in% missing_visits]
+        ) |>
+          mutate(AVISIT = paste0("Week ", AVISITN), ANRIND = "NORMAL")
+        
+        filtered_df <- filtered_anl |>
+          full_join(filter(avisit_modified, AVISITN %in% missing_visits))
+        
+        lev <- distinct(filtered_df, AVISIT, AVISITN) |> arrange(AVISITN) |> pull(AVISIT)
+        
+        filtered_df <- filtered_df |> 
+          mutate(
+            AVISIT = factor(AVISIT, levels = lev),
+            ANRIND = factor(ANRIND, levels = c("HIGH", "NORMAL", "LOW"))
+          ) |>
+          arrange(SUBJID, hours_since_inf_start)
+      } else {
+        filtered_df <- filter(df1, AVISITN %in% visit, COHORT == a)
+        
+        lev <- distinct(filtered_df, AVISIT, AVISITN) |> arrange(AVISITN) |> pull(AVISIT)
+        
+        filtered_df <- filtered_df |>
+          mutate(
+            AVISIT = factor(AVISIT, levels = lev)
+          ) |> 
+          arrange(SUBJID, hours_since_inf_start)
+      }
+      
+      n_subj <- length(unique(na.omit(filtered_df$SUBJID)))
+      
+      ggplot(filtered_df, aes(
+        x = hours_since_inf_start,
+        y = AVAL,
+        group = SUBJID,
+        color = SUBJID
+      )) +
+        geom_line() +
+        geom_point(aes(shape = ANRIND), size = 5, show.legend = TRUE) +
+        facet_wrap(~AVISIT, scales = "free_y", ncol = 1, strip.position = "left") +
+        expand_limits(y = c(
+          ceiling(min(df1$AVAL, na.rm = TRUE)) - 2,
+          ceiling(max(df1$AVAL, na.rm = TRUE)) + 2
+        )) +
+        theme_bw(base_size = 16) +
+        scale_y_continuous(
+          limits = c(
+            min(df1[["AVAL"]], na.rm = TRUE),
+            max(df1[["AVAL"]], na.rm = TRUE)
+          )
+        ) +
+        scale_x_continuous(breaks = seq(floor(min(df1$hours_since_inf_start, na.rm = TRUE)),
+                                        max(df1$hours_since_inf_start, na.rm = TRUE),
+                                        by = 1
+        )) +
+        scale_color_manual(values = color_palette) +
+        labs(
+          x = "Hours from Start of Infusion",
+          y = "Original Results",
+          # y = unique(df1$PARAM),
+          # title = args$title,
+          subtitle = paste0(
+            unique(filtered_df$COHORT), " (N=", n_subj, ") : W", min(filtered_df$AVISITN, na.rm = TRUE), "-W",
+            max(filtered_df$AVISITN, na.rm = TRUE),
+            " [", param, "]"
+          ),
+          # caption = args$footnote
+        ) +
+        scale_shape_manual(
+          values = c(
+            "HIGH" = 17,
+            "NORMAL" = 16,
+            "LOW" = 25
+          ),
+          drop = FALSE
+        ) +
+        theme(
+          strip.placement = "outside",
+          strip.text = element_text(size = 16),
+          strip.text.x = element_text(angle = 90),
+          
+          # titles / subtitles / caption
+          plot.title    = element_text(size = 20, face = "bold"),
+          plot.subtitle = element_text(size = 20, face = "bold"),
+          plot.caption  = element_text(size = 16),
+
+          # axes
+          axis.title    = element_text(size = 20, face = "bold"),
+          axis.text     = element_text(size = 16, face = "bold"),
+          
+          # legend
+          legend.title = element_text(size = 16, face = "bold"),
+          legend.text  = element_text(size = 16),
+          legend.key.size = grid::unit(0.6, "cm")
+          
+        ) +
+        guides(
+          shape = guide_legend(order = 2, override.aes = list(linetype = NA)),
+          color = guide_legend(order = 1, override.aes = list(shape = 15))
+        )
+    })
+    
+    plot_list <- c(plot_list, temp_list)
+  }
+  plot_list
+}
+```
+
+### Diastolic Blood Pressure (mmHg)
+
+**Cohort A1**
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+#| results: 'asis'
+#| fig-show: asis
+#| out-width: "\\linewidth"
+#| fig-align: "center"
+
+paramplot(vsdat1 |> filter(COHORT == "Cohort A1"), "DIABP (mmHg)") +
+  scale_x_continuous(breaks = vsdat1 |> filter(COHORT == "Cohort A1") |> distinct(VISITNUM) |> pull(),
+                     labels = vsdat1 |> filter(COHORT == "Cohort A1") |> distinct(VISIT) |> pull(),
+                     expand = expansion(mult = 0.01)) +
+  facet_wrap(~ VISITGP, ncol = 1, scales = "free_x") +
+  labs(
+      x = "Visit Name",
+      y = stringr::str_wrap("DIABP (mmHg)", 40L),
+      title = NULL
+    ) +
+  plot_annotation(
+    caption = "Data points represent the final assessment conducted before dosing.",
+    theme = theme(
+      plot.caption = element_text(hjust = 0, size = 10),
+      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
+    )
+  )
+```
+
+\newpage
+
+**Cohort A2**
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+#| results: 'asis'
+#| fig-show: asis
+#| out-width: "\\linewidth"
+#| fig-align: "center"
+
+paramplot(vsdat1 |> filter(COHORT == "Cohort A2"), "DIABP (mmHg)") +
+  scale_x_continuous(breaks = vsdat1 |> filter(COHORT == "Cohort A2") |> distinct(VISITNUM) |> pull(),
+                     labels = vsdat1 |> filter(COHORT == "Cohort A2") |> distinct(VISIT) |> pull(),
+                     expand = expansion(mult = 0.01)) +
+  facet_wrap(~ VISITGP, ncol = 1, scales = "free_x") +
+  labs(
+      x = "Visit Name",
+      y = stringr::str_wrap("DIABP (mmHg)", 40L),
+      title = NULL
+    ) +
+  plot_annotation(
+    caption = "Data points represent the final assessment conducted before dosing.",
+    theme = theme(
+      plot.caption = element_text(hjust = 0, size = 10),
+      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
+    )
+  )
+```
+
+\newpage
+
+**Cohort A3**
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 6
+#| results: 'asis'
+#| fig-show: asis
+#| out-width: "\\linewidth"
+#| fig-align: "center"
+
+paramplot(vsdat1 |> filter(COHORT == "Cohort A3"), "DIABP (mmHg)") +
+  scale_x_continuous(breaks = vsdat1 |> filter(COHORT == "Cohort A3") |> distinct(VISITNUM) |> pull(),
+                     labels = vsdat1 |> filter(COHORT == "Cohort A3") |> distinct(VISIT) |> pull(),
+                     expand = expansion(mult = 0.01)) +
+  facet_wrap(~ VISITGP, ncol = 1, scales = "free_x") +
+  labs(
+      x = "Visit Name",
+      y = stringr::str_wrap("DIABP (mmHg)", 40L),
+      title = NULL
+    ) +
+  plot_annotation(
+    caption = "Data points represent the final assessment conducted before dosing.",
+    theme = theme(
+      plot.caption = element_text(hjust = 0, size = 10),
+      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
+    )
+  )
+```
+
+\newpage
+
+**Cohort B1**
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 6
+#| results: 'asis'
+#| fig-show: asis
+#| out-width: "\\linewidth"
+#| fig-align: "center"
+
+paramplot(vsdat1 |> filter(COHORT == "Cohort B1"), "DIABP (mmHg)") +
+  scale_x_continuous(breaks = vsdat1 |> filter(COHORT == "Cohort B1") |> distinct(VISITNUM) |> pull(),
+                     labels = vsdat1 |> filter(COHORT == "Cohort B1") |> distinct(VISIT) |> pull(),
+                     expand = expansion(mult = 0.01)) +
+  facet_wrap(~ VISITGP, ncol = 1, scales = "free_x") +
+  labs(
+      x = "Visit Name",
+      y = stringr::str_wrap("DIABP (mmHg)", 40L),
+      title = NULL
+    ) +
+  plot_annotation(
+    caption = "Data points represent the final assessment conducted before dosing.",
+    theme = theme(
+      plot.caption = element_text(hjust = 0, size = 10),
+      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
+    )
+  )
+```
+
+\newpage
+
+### Systolic Blood Pressure (mmHg)
+
+**Cohort A1**
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+#| results: 'asis'
+#| fig-show: asis
+#| out-width: "\\linewidth"
+#| fig-align: "center"
+
+paramplot(vsdat1 |> filter(COHORT == "Cohort A1"), "SYSBP (mmHg)") +
+  scale_x_continuous(breaks = vsdat1 |> filter(COHORT == "Cohort A1") |> distinct(VISITNUM) |> pull(),
+                     labels = vsdat1 |> filter(COHORT == "Cohort A1") |> distinct(VISIT) |> pull(),
+                     expand = expansion(mult = 0.01)) +
+  facet_wrap(~ VISITGP, ncol = 1, scales = "free_x") +
+  labs(
+      x = "Visit Name",
+      y = stringr::str_wrap("SYSBP (mmHg)", 40L),
+      title = NULL
+    ) +
+  plot_annotation(
+    caption = "Data points represent the final assessment conducted before dosing.",
+    theme = theme(
+      plot.caption = element_text(hjust = 0, size = 10),
+      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
+    )
+  )
+```
+
+\newpage
+
+**Cohort A2**
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+#| results: 'asis'
+#| fig-show: asis
+#| out-width: "\\linewidth"
+#| fig-align: "center"
+
+paramplot(vsdat1 |> filter(COHORT == "Cohort A2"), "SYSBP (mmHg)") +
+  scale_x_continuous(breaks = vsdat1 |> filter(COHORT == "Cohort A2") |> distinct(VISITNUM) |> pull(),
+                     labels = vsdat1 |> filter(COHORT == "Cohort A2") |> distinct(VISIT) |> pull(),
+                     expand = expansion(mult = 0.01)) +
+  facet_wrap(~ VISITGP, ncol = 1, scales = "free_x") +
+  labs(
+      x = "Visit Name",
+      y = stringr::str_wrap("SYSBP (mmHg)", 40L),
+      title = NULL
+    ) +
+  plot_annotation(
+    caption = "Data points represent the final assessment conducted before dosing.",
+    theme = theme(
+      plot.caption = element_text(hjust = 0, size = 10),
+      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
+    )
+  )
+```
+
+\newpage
+
+**Cohort A3**
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 6
+#| results: 'asis'
+#| fig-show: asis
+#| out-width: "\\linewidth"
+#| fig-align: "center"
+
+paramplot(vsdat1 |> filter(COHORT == "Cohort A3"), "SYSBP (mmHg)") +
+  scale_x_continuous(breaks = vsdat1 |> filter(COHORT == "Cohort A3") |> distinct(VISITNUM) |> pull(),
+                     labels = vsdat1 |> filter(COHORT == "Cohort A3") |> distinct(VISIT) |> pull(),
+                     expand = expansion(mult = 0.01)) +
+  facet_wrap(~ VISITGP, ncol = 1, scales = "free_x") +
+  labs(
+      x = "Visit Name",
+      y = stringr::str_wrap("SYSBP (mmHg)", 40L),
+      title = NULL
+    ) +
+  plot_annotation(
+    caption = "Data points represent the final assessment conducted before dosing.",
+    theme = theme(
+      plot.caption = element_text(hjust = 0, size = 10),
+      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
+    )
+  )
+```
+
+\newpage
+
+**Cohort B1**
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 6
+#| results: 'asis'
+#| fig-show: asis
+#| out-width: "\\linewidth"
+#| fig-align: "center"
+
+paramplot(vsdat1 |> filter(COHORT == "Cohort B1"), "SYSBP (mmHg)") +
+  scale_x_continuous(breaks = vsdat1 |> filter(COHORT == "Cohort B1") |> distinct(VISITNUM) |> pull(),
+                     labels = vsdat1 |> filter(COHORT == "Cohort B1") |> distinct(VISIT) |> pull(),
+                     expand = expansion(mult = 0.01)) +
+  facet_wrap(~ VISITGP, ncol = 1, scales = "free_x") +
+  labs(
+      x = "Visit Name",
+      y = stringr::str_wrap("SYSBP (mmHg)", 40L),
+      title = NULL
+    ) +
+  plot_annotation(
+    caption = "Data points represent the final assessment conducted before dosing.",
+    theme = theme(
+      plot.caption = element_text(hjust = 0, size = 10),
+      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
+    )
+  )
+```
+
+\newpage
+
+### Pulse (beats/min)
+
+**Cohort A1**
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+#| results: 'asis'
+#| fig-show: asis
+#| out-width: "\\linewidth"
+#| fig-align: "center"
+
+paramplot(vsdat1 |> filter(COHORT == "Cohort A1"), "PULSE (beats/min)") +
+  scale_x_continuous(breaks = vsdat1 |> filter(COHORT == "Cohort A1") |> distinct(VISITNUM) |> pull(),
+                     labels = vsdat1 |> filter(COHORT == "Cohort A1") |> distinct(VISIT) |> pull(),
+                     expand = expansion(mult = 0.01)) +
+  facet_wrap(~ VISITGP, ncol = 1, scales = "free_x") +
+  labs(
+      x = "Visit Name",
+      y = stringr::str_wrap("PULSE (beats/min)", 40L),
+      title = NULL
+    ) +
+  plot_annotation(
+    caption = "Data points represent the final assessment conducted before dosing.",
+    theme = theme(
+      plot.caption = element_text(hjust = 0, size = 10),
+      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
+    )
+  )
+```
+
+\newpage
+
+**Cohort A2**
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+#| results: 'asis'
+#| fig-show: asis
+#| out-width: "\\linewidth"
+#| fig-align: "center"
+
+paramplot(vsdat1 |> filter(COHORT == "Cohort A2"), "PULSE (beats/min)") +
+  scale_x_continuous(breaks = vsdat1 |> filter(COHORT == "Cohort A2") |> distinct(VISITNUM) |> pull(),
+                     labels = vsdat1 |> filter(COHORT == "Cohort A2") |> distinct(VISIT) |> pull(),
+                     expand = expansion(mult = 0.01)) +
+  facet_wrap(~ VISITGP, ncol = 1, scales = "free_x") +
+  labs(
+      x = "Visit Name",
+      y = stringr::str_wrap("PULSE (beats/min)", 40L),
+      title = NULL
+    ) +
+  plot_annotation(
+    caption = "Data points represent the final assessment conducted before dosing.",
+    theme = theme(
+      plot.caption = element_text(hjust = 0, size = 10),
+      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
+    )
+  )
+```
+
+\newpage
+
+**Cohort A3**
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 6
+#| results: 'asis'
+#| fig-show: asis
+#| out-width: "\\linewidth"
+#| fig-align: "center"
+
+paramplot(vsdat1 |> filter(COHORT == "Cohort A3"), "PULSE (beats/min)") +
+  scale_x_continuous(breaks = vsdat1 |> filter(COHORT == "Cohort A3") |> distinct(VISITNUM) |> pull(),
+                     labels = vsdat1 |> filter(COHORT == "Cohort A3") |> distinct(VISIT) |> pull(),
+                     expand = expansion(mult = 0.01)) +
+  facet_wrap(~ VISITGP, ncol = 1, scales = "free_x") +
+  labs(
+      x = "Visit Name",
+      y = stringr::str_wrap("PULSE (beats/min)", 40L),
+      title = NULL
+    ) +
+  plot_annotation(
+    caption = "Data points represent the final assessment conducted before dosing.",
+    theme = theme(
+      plot.caption = element_text(hjust = 0, size = 10),
+      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
+    )
+  )
+```
+
+\newpage
+
+**Cohort B1**
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 6
+#| results: 'asis'
+#| fig-show: asis
+#| out-width: "\\linewidth"
+#| fig-align: "center"
+
+paramplot(vsdat1 |> filter(COHORT == "Cohort B1"), "PULSE (beats/min)") +
+  scale_x_continuous(breaks = vsdat1 |> filter(COHORT == "Cohort B1") |> distinct(VISITNUM) |> pull(),
+                     labels = vsdat1 |> filter(COHORT == "Cohort B1") |> distinct(VISIT) |> pull(),
+                     expand = expansion(mult = 0.01)) +
+  facet_wrap(~ VISITGP, ncol = 1, scales = "free_x") +
+  labs(
+      x = "Visit Name",
+      y = stringr::str_wrap("PULSE (beats/min)", 40L),
+      title = NULL
+    ) +
+  plot_annotation(
+    caption = "Data points represent the final assessment conducted before dosing.",
+    theme = theme(
+      plot.caption = element_text(hjust = 0, size = 10),
+      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
+    )
+  )
+```
+
+\newpage
+
+### Pulse oximetry (spO2)
+
+**Cohort A1**
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+#| results: 'asis'
+#| fig-show: asis
+#| out-width: "\\linewidth"
+#| fig-align: "center"
+
+paramplot(vsdat1 |> filter(COHORT == "Cohort A1"), "Pulse OX (spO2)") +
+  scale_x_continuous(breaks = vsdat1 |> filter(COHORT == "Cohort A1") |> distinct(VISITNUM) |> pull(),
+                     labels = vsdat1 |> filter(COHORT == "Cohort A1") |> distinct(VISIT) |> pull(),
+                     expand = expansion(mult = 0.01)) +
+  facet_wrap(~ VISITGP, ncol = 1, scales = "free_x") +
+  labs(
+      x = "Visit Name",
+      y = stringr::str_wrap("Pulse OX (spO2)", 40L),
+      title = NULL
+    ) +
+  plot_annotation(
+    caption = "Data points represent the final assessment conducted before dosing.",
+    theme = theme(
+      plot.caption = element_text(hjust = 0, size = 10),
+      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
+    )
+  )
+```
+
+\newpage
+
+**Cohort A2**
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+#| results: 'asis'
+#| fig-show: asis
+#| out-width: "\\linewidth"
+#| fig-align: "center"
+
+paramplot(vsdat1 |> filter(COHORT == "Cohort A2"), "Pulse OX (spO2)") +
+  scale_x_continuous(breaks = vsdat1 |> filter(COHORT == "Cohort A2") |> distinct(VISITNUM) |> pull(),
+                     labels = vsdat1 |> filter(COHORT == "Cohort A2") |> distinct(VISIT) |> pull(),
+                     expand = expansion(mult = 0.01)) +
+  facet_wrap(~ VISITGP, ncol = 1, scales = "free_x") +
+  labs(
+      x = "Visit Name",
+      y = stringr::str_wrap("Pulse OX (spO2)", 40L),
+      title = NULL
+    ) +
+  plot_annotation(
+    caption = "Data points represent the final assessment conducted before dosing.",
+    theme = theme(
+      plot.caption = element_text(hjust = 0, size = 10),
+      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
+    )
+  )
+```
+
+\newpage
+
+**Cohort A3**
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 6
+#| results: 'asis'
+#| fig-show: asis
+#| out-width: "\\linewidth"
+#| fig-align: "center"
+
+paramplot(vsdat1 |> filter(COHORT == "Cohort A3"), "Pulse OX (spO2)") +
+  scale_x_continuous(breaks = vsdat1 |> filter(COHORT == "Cohort A3") |> distinct(VISITNUM) |> pull(),
+                     labels = vsdat1 |> filter(COHORT == "Cohort A3") |> distinct(VISIT) |> pull(),
+                     expand = expansion(mult = 0.01)) +
+  facet_wrap(~ VISITGP, ncol = 1, scales = "free_x") +
+  labs(
+      x = "Visit Name",
+      y = stringr::str_wrap("Pulse OX (spO2)", 40L),
+      title = NULL
+    ) +
+  plot_annotation(
+    caption = "Data points represent the final assessment conducted before dosing.",
+    theme = theme(
+      plot.caption = element_text(hjust = 0, size = 10),
+      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
+    )
+  )
+```
+
+\newpage
+
+**Cohort B1**
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 6
+#| results: 'asis'
+#| fig-show: asis
+#| out-width: "\\linewidth"
+#| fig-align: "center"
+
+paramplot(vsdat1 |> filter(COHORT == "Cohort B1"), "Pulse OX (spO2)") +
+  scale_x_continuous(breaks = vsdat1 |> filter(COHORT == "Cohort B1") |> distinct(VISITNUM) |> pull(),
+                     labels = vsdat1 |> filter(COHORT == "Cohort B1") |> distinct(VISIT) |> pull(),
+                     expand = expansion(mult = 0.01)) +
+  facet_wrap(~ VISITGP, ncol = 1, scales = "free_x") +
+  labs(
+      x = "Visit Name",
+      y = stringr::str_wrap("Pulse OX (spO2)", 40L),
+      title = NULL
+    ) +
+  plot_annotation(
+    caption = "Data points represent the final assessment conducted before dosing.",
+    theme = theme(
+      plot.caption = element_text(hjust = 0, size = 10),
+      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
+    )
+  )
+```
+
+\newpage
+
+### Temperature (C)
+
+**Cohort A1**
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+#| results: 'asis'
+#| fig-show: asis
+#| out-width: "\\linewidth"
+#| fig-align: "center"
+
+paramplot(vsdat1 |> filter(COHORT == "Cohort A1"), "TEMP (C)") +
+  scale_x_continuous(breaks = vsdat1 |> filter(COHORT == "Cohort A1") |> distinct(VISITNUM) |> pull(),
+                     labels = vsdat1 |> filter(COHORT == "Cohort A1") |> distinct(VISIT) |> pull(),
+                     expand = expansion(mult = 0.01)) +
+  facet_wrap(~ VISITGP, ncol = 1, scales = "free_x") +
+  labs(
+      x = "Visit Name",
+      y = stringr::str_wrap("TEMP (C)", 40L),
+      title = NULL
+    ) +
+  plot_annotation(
+    caption = "Data points represent the final assessment conducted before dosing.",
+    theme = theme(
+      plot.caption = element_text(hjust = 0, size = 10),
+      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
+    )
+  )
+```
+
+\newpage
+
+**Cohort A2**
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 8
+#| results: 'asis'
+#| fig-show: asis
+#| out-width: "\\linewidth"
+#| fig-align: "center"
+
+paramplot(vsdat1 |> filter(COHORT == "Cohort A2"), "TEMP (C)") +
+  scale_x_continuous(breaks = vsdat1 |> filter(COHORT == "Cohort A2") |> distinct(VISITNUM) |> pull(),
+                     labels = vsdat1 |> filter(COHORT == "Cohort A2") |> distinct(VISIT) |> pull(),
+                     expand = expansion(mult = 0.01)) +
+  facet_wrap(~ VISITGP, ncol = 1, scales = "free_x") +
+  labs(
+      x = "Visit Name",
+      y = stringr::str_wrap("TEMP (C)", 40L),
+      title = NULL
+    ) +
+  plot_annotation(
+    caption = "Data points represent the final assessment conducted before dosing.",
+    theme = theme(
+      plot.caption = element_text(hjust = 0, size = 10),
+      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
+    )
+  )
+```
+
+\newpage
+
+**Cohort A3**
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 6
+#| results: 'asis'
+#| fig-show: asis
+#| out-width: "\\linewidth"
+#| fig-align: "center"
+
+paramplot(vsdat1 |> filter(COHORT == "Cohort A3"), "TEMP (C)") +
+  scale_x_continuous(breaks = vsdat1 |> filter(COHORT == "Cohort A3") |> distinct(VISITNUM) |> pull(),
+                     labels = vsdat1 |> filter(COHORT == "Cohort A3") |> distinct(VISIT) |> pull(),
+                     expand = expansion(mult = 0.01)) +
+  facet_wrap(~ VISITGP, ncol = 1, scales = "free_x") +
+  labs(
+      x = "Visit Name",
+      y = stringr::str_wrap("TEMP (C)", 40L),
+      title = NULL
+    ) +
+  plot_annotation(
+    caption = "Data points represent the final assessment conducted before dosing.",
+    theme = theme(
+      plot.caption = element_text(hjust = 0, size = 10),
+      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
+    )
+  )
+```
+
+\newpage
+
+**Cohort B1**
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 14
+#| fig-height: 6
+#| results: 'asis'
+#| fig-show: asis
+#| out-width: "\\linewidth"
+#| fig-align: "center"
+
+paramplot(vsdat1 |> filter(COHORT == "Cohort B1"), "TEMP (C)") +
+  scale_x_continuous(breaks = vsdat1 |> filter(COHORT == "Cohort B1") |> distinct(VISITNUM) |> pull(),
+                     labels = vsdat1 |> filter(COHORT == "Cohort B1") |> distinct(VISIT) |> pull(),
+                     expand = expansion(mult = 0.01)) +
+  facet_wrap(~ VISITGP, ncol = 1, scales = "free_x") +
+  labs(
+      x = "Visit Name",
+      y = stringr::str_wrap("TEMP (C)", 40L),
+      title = NULL
+    ) +
+  plot_annotation(
+    caption = "Data points represent the final assessment conducted before dosing.",
+    theme = theme(
+      plot.caption = element_text(hjust = 0, size = 10),
+      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
+    )
+  )
+```
+
+\elandscape

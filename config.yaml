@@ -1,0 +1,46 @@
+study:
+  id: "DNLI-I-0001"
+  drug: "DNL-126"
+  drug_full: "DNL126 (ETV:SGSH-BioM)"
+  indication: "MPS IIIA (Sanfilippo Syndrome Type A)"
+  protocol_version: "V6 (26-Aug-2025)"
+
+data_cuts:
+  edc_snapshot: "2026-02-25"
+  safety_lab_mlm: "2026-02-13"
+  ada_bioagilytix: "2026-02-20"
+  urine_biomarkers_frontage: "2025-07-18"
+  irt_4g_clinical: "2026-02-01"
+  pd_log: "2026-01"
+
+cohorts:
+  A1:
+    subjects: ["0016-9001", "0016-9003", "0017-9001", "0017-9002"]
+    dose_schedule: "3 mg/kg QW Wks 1-2, then 10 mg/kg Q2W >= 12 doses"
+  A2:
+    subjects: ["0016-9004", "0017-9003", "2064-9002", "2065-9002"]
+    dose_schedule: "3 mg/kg QW Wks 1-2, then escalate 3->6->10 mg/kg Q2W"
+  A3:
+    subjects: ["0016-9005", "0016-9006", "0017-9005", "0017-9007", "0017-9008",
+               "2064-9003", "2064-9004", "2064-9005", "2065-9001", "2065-9004"]
+    dose_schedule: "3 mg/kg QW >= 6 doses -> 6 mg/kg QW >= 6 doses -> 10 mg/kg QW"
+  B1:
+    subjects: ["0017-9004", "0017-9006"]
+    dose_schedule: "3 mg/kg QW >= 6 doses -> 6 mg/kg QW >= 6 doses -> 10 mg/kg QW"
+
+paths:
+  figures_dir: "output/figures"
+  html_output: "output/I-0001-Medical-Monitoring-Report.html"
+  pdf_output: "output/I-0001-Medical-Monitoring-Report.pdf"
+  data_dir: "data"
+  edc_dir: "data/edc"
+
+exclusions:
+  note: "CSF HS (primary efficacy) and COA results (exploratory efficacy) excluded per Protocol V6 Sec 9.1"
+  removed:
+    - "CSF Heparan Sulfate concentration (primary efficacy endpoint)"
+    - "CSF HS normalization status (secondary efficacy endpoint)"
+    - "Serum NfL (secondary efficacy endpoint)"
+    - "COA results: KABC, VABS-III, BSID III/IV scores (exploratory efficacy)"
+  kept_by_direction:
+    - "Urine HS (per medical monitor direction)"

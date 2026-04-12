@@ -1,0 +1,137 @@
+# MMR Python Scripts — DNLI-I-0001 / DNL-126
+## Data Cut: 2026-02-25
+
+This folder contains all Python scripts used to generate and rebuild the
+AI-authored Medical Monitoring Report (MMR).
+
+---
+
+## Pipeline Overview
+
+Run scripts in the following order:
+
+```
+1. gen_corrected_figs.py   →  generates /tmp/figs_corrected/*.png  (76 figures)
+2. rebuild_mmr.py          →  injects figures into the MMR HTML in-place
+3. gen_mmr_pdf.py          →  converts the updated HTML to PDF
+```
+
+The v3 scripts (below) are earlier-iteration generators kept for reference.
+
+---
+
+## Script Descriptions
+
+### `gen_corrected_figs.py`  *(PRIMARY — R-aligned)*
+Generates all 76 corrected figures matching the R/Quarto reference implementation
+(`I-0001 Medical Monitoring Report-PDF.qmd`).
+
+**Output:** `/tmp/figs_corrected/`
+
+Figures produced:
+- `fig_4_1_exposure.png` — Section 4.1: Drug exposure by cohort (line+point, faceted)
+- `fig_4_2_*.png` (×10) — Section 4.2: Per-pair dose compliance profiles
+- `lab_*.png` (×34) — Section 6: Safety lab trend plots (all subjects, paramplot style)
+- `lab_eDISH.png` — Section 6: eDISH Hy's Law evaluation plot
+- `ecg_*.png` (×5) — Section 7: ECG parameter trend plots
+- `vs_*_Cohort_*.png` (×24) — Section 8: Vital signs, pre-dose only, per cohort
+
+**Key design choices (matching R):**
+- `paramplot()` style: single plot, all 20 subjects together
+  - `colour = Subject` using 20-color colorblind palette
+  - `linetype = Cohort` (solid/long-dash/dotted/dotdash for A1/A2/A3/B1)
+  - `shape = IND` (▲=HIGH, ●=NORMAL, ▼=LOW)
+- Compliance COMPCAT: `<50%`, `50-<75%`, `75-<90%`, `90-100%`, `>100%`, `Missing Dose Entry`
+- ACTDOSE formula: deviation = |EXVOLA−EXVOLP|/EXVOLP×100;
+  cap at PLANDOSE if overfill or deviation <10%; scale otherwise
+- VS filtered to pre-dose assessments only (`ADTM < EXSTDTM`)
+- VS faceted by visit group: BL–Wk49 / Wk50–97 / Wk98–145
+- IRR vlines: color `#ffb000`; linetype by AESEV (dotted/dashdot/solid)
+- eDISH: ALT×ULN vs TBILI×ULN and AST×ULN vs TBILI×ULN, log-log, Hy's Law quadrants
+
+---
+
+### `rebuild_mmr.py`  *(PRIMARY — injection step)*
+Reads the MMR HTML, locates each figure section via text search, and replaces
+old figure blocks with the new base64-embedded corrected figures.
+
+**Input:** `I-0001-Medical-Monitoring-Report-2026FEB25-AI.html`
+**Output:** Same file, updated in-place
+
+Sections handled:
+- Section 4.1: Exposure figure (1 figure)
+- Section 4.2: Compliance pair plots (10 figures)
+- Section 6: Lab parameters (34 figures + eDISH)
+- Section 7: ECG parameters (5 figures)
+- Section 8: Vital signs (6 params × 4 cohorts = 24 figure blocks)
+
+---
+
+### `gen_mmr_pdf.py`  *(PRIMARY — PDF generation)*
+Converts the MMR HTML to a professional PDF using ReportLab Platypus.
+
+**Input:** `I-0001-Medical-Monitoring-Report-2026FEB25-AI.html`
+**Output:** `I-0001-Medical-Monitoring-Report-2026FEB25-AI.pdf`
+
+Features:
+- A4 page layout with custom header/footer on every page
+- Parses HTML via BeautifulSoup; handles headings, paragraphs, tables, figures
+- Embeds base64 PNG images from HTML `<img src="data:image/png;base64,...">` tags
+- Styled callout boxes, alternating table row colors
+- Study title/date in running header; page number in footer
+
+---
+
+### `gen_lab_vs_figs_v3.py`  *(REFERENCE — earlier iteration)*
+Earlier version of the lab/VS/ECG figure generator using a 4-cohort panel layout.
+
+**Output:** `/tmp/mmr_figs_v3/`
+
+Style: 4-row facet (one row per cohort) with per-cohort color palettes
+(blue=A1, orange=A2, green=A3, purple=B1). Individual subject spaghetti lines
+with HIGH/LOW outlier coloring. Superseded by `gen_corrected_figs.py`.
+
+---
+
+### `gen_compliance_v3.py`  *(REFERENCE — earlier iteration)*
+Earlier version of the dose compliance figure generator.
+
+**Output:** `/tmp/mmr_figs_v3/fig42_compliance_v3.txt` (base64 PNG)
+
+Style: Per-participant compliance bar charts in 2-column layout with tier
+coloring and IRR event markers. Superseded by `gen_corrected_figs.py`.
+
+---
+
+### `gen_exposure_compliance.py`  *(REFERENCE — earlier iteration)*
+Earlier version combining exposure (horizontal swimlane style) and compliance.
+
+**Output:** `/tmp/mmr_figs_v3/`
+
+Style: Horizontal bars for treatment duration (swimlane) with dose tick marks,
+IRR markers, and protocol milestone lines. Superseded by `gen_corrected_figs.py`.
+
+---
+
+## Study Reference
+
+| Item | Value |
+|------|-------|
+| Study | DNLI-I-0001 / DNL-126 |
+| Data cut | 2026-02-25 |
+| Drug | DNL-126 (enzyme replacement therapy) |
+| Cohorts | A1 (4 subjects), A2 (4), A3 (10), B1 (2) |
+| Total subjects | 20 |
+| R reference | `I-0001 Medical Monitoring Report-PDF.qmd` |
+| HTML output | `I-0001-Medical-Monitoring-Report-2026FEB25-AI.html` |
+| PDF output | `I-0001-Medical-Monitoring-Report-2026FEB25-AI.pdf` |
+
+---
+
+## Dependencies
+
+```bash
+pip install matplotlib numpy pandas beautifulsoup4 lxml reportlab --break-system-packages
+```
+
+*Generated by Claude (Cowork mode) — 2026-03-18*

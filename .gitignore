@@ -1,0 +1,42 @@
+# Clinical data (proprietary, never commit)
+data/edc/*.sas7bdat
+data/*.csv
+data/*.xpt
+data/*.xlsx
+data/*.xls
+data/*.sas7bdat
+documents/*.xlsx
+
+# Generated outputs
+output/*.html
+output/*.pdf
+
+# Large binary files
+*.pptx
+*.docx
+
+# Build artifacts
+/tmp/figs_corrected/
+/tmp/mmr_figs_v3/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# R/Quarto artifacts
+*_files/
+*_cache/
+.Rhistory
+.Rdata
+.RData
+.Rproj.user/
+*.Rproj
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*~

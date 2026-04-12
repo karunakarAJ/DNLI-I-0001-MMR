@@ -1,6 +1,6 @@
 # DNLI-I-0001 Medical Monitoring Report (MMR)
 
-Safety-focused Medical Monitoring Report template and pipeline for clinical study **DNLI-I-0001** (DNL-126).
+Safety-focused Medical Monitoring Report template and pipeline for clinical study **DNLI-I-0001** (DNL-126), generated using a multi-agent AI pipeline built on Claude Code.
 
 ## Study Overview
 
@@ -11,8 +11,9 @@ Safety-focused Medical Monitoring Report template and pipeline for clinical stud
 | **Indication** | MPS IIIA (Sanfilippo Syndrome Type A) |
 | **Phase** | Phase 1/2 |
 | **Protocol** | Version 6 (26-Aug-2025) |
-| **Subjects** | N=20 across 4 cohorts |
+| **Subjects** | N=20 across 4 cohorts (4 sites) |
 | **Data Cut** | 2026-02-25 (EDC) |
+| **Report Date** | 2026-04-12 |
 
 ### Cohort Structure
 
@@ -43,17 +44,56 @@ Per Protocol V6 Section 9.1, the following **efficacy data** are excluded from t
 
 **Urine HS** is included per medical monitor direction. COA **collection compliance** (whether assessed per SOA) is tracked, but actual results are not shown.
 
+## Key Safety Findings
+
+### Clinician Safety Review ([full report](docs/clinician-safety-review.md))
+
+**Overall Benefit-Risk: Favorable**
+
+| Domain | Risk Level | Key Signal |
+|--------|-----------|------------|
+| IRR | **MEDIUM-HIGH** | 442 events, 75% moderate-severe, 1 anaphylactic reaction (B1) |
+| AE/SAE Pattern | MEDIUM | 15 SAEs in 13/20 participants; 0017-9004 has 4 SAEs (highest burden) |
+| Immunogenicity/ADA | MEDIUM | 95% ADA+, 60% neutralizing; correlates with IRR severity |
+| Hepatotoxicity (eDISH) | LOW | 0/20 ALT >3xULN, 0/20 TBILI >1.5xULN |
+| ECG | LOW | QTcF >450ms in 3/20 -- single observations, IRR-related |
+
+### Biostatistician Safety Review ([full report](docs/biostatistician-safety-review.md))
+
+| Domain | Key Finding |
+|--------|------------|
+| IRR Rates | Exposure-adjusted: A3 66.2 vs A1 27.6 per 100 person-wks -- consistent with time-dependent decline |
+| eDISH Validation | Confirmed clean; max xULN values not reported (data gap for safety margin quantification) |
+| Small Sample Power | Min detectable AE rate: 7.8% (N=20), 33% (N=4); drug-related SAE 95% CI: 0.1--24.9% |
+| Data Completeness | Visit-level completion rates not available; lab data lag of 12 days before cut |
+
+## AI Pipeline
+
+This report was generated using a 7-agent pipeline in [Claude Code](https://claude.ai/claude-code). See [pipeline metadata](docs/pipeline-metadata.md) for full details.
+
+| Phase | Agents | Task |
+|-------|--------|------|
+| 1. Exploration | 2 Explore agents (parallel) | Codebase structure, study data extraction |
+| 2. Planning | Plan + Protocol Explorer | Repo design, efficacy/safety classification from Protocol V6 |
+| 3. Implementation | QMD Creator + Main Pipeline | Safety-only QMD template (5,376 lines), HTML report (6.6 MB), scripts |
+| 4. Review | Clinician + Biostatistician (parallel) | Safety signal detection across all 8 report sections |
+
+**Total token usage:** ~235K tokens across agents
+
 ## Repository Structure
 
 ```
 DNLI-I-0001-MMR/
-+-- report/             # Generated safety-only HTML report
-+-- qmd/                # R/Quarto template (safety-only)
++-- report/             # Generated safety-only HTML report (6.6 MB)
++-- qmd/                # R/Quarto template (safety-only, 5,376 lines)
 +-- scripts/            # Python figure generation and PDF pipeline
 |   +-- legacy/         # Earlier script iterations (reference)
 +-- data/               # Clinical data inputs (not committed)
 +-- output/             # Generated artifacts (not committed)
-+-- docs/               # Supporting documentation
++-- docs/               # Safety reviews and pipeline metadata
+|   +-- clinician-safety-review.md
+|   +-- biostatistician-safety-review.md
+|   +-- pipeline-metadata.md
 +-- config.yaml         # Study metadata and path configuration
 +-- requirements.txt    # Python dependencies
 ```

@@ -99,13 +99,17 @@ MLM data transfer: \textbf{\texttt{`r safetylab_dt`}} \\
 \textbf{IRT} \\
 4G Clinical data tranafer: \textbf{\texttt{`r irt_current_dt`}} \\
 
-% EXCLUDED (efficacy): Biomarkers/Clinical Outcomes cover reference
+\vspace{1em}
+
+\textbf{Urine Biomarkers} \\
+Frontage Urine data transfer: \textbf{\texttt{`r urine_dt`}} \\
+
 \vspace{1em}
 
 \textbf{Anti Drug Antibodies} \\
 Bioagilytix data transfer: \textbf{\texttt{`r ada_dt`}} \\
 
-% EXCLUDED (efficacy): Biomarkers/Clinical Outcomes cover reference
+% EXCLUDED - efficacy % Clinical Outcomes section removed
 \end{flushleft}
 
 \vfill
@@ -283,13 +287,13 @@ cm <- read_sas(paste0(here(), "/data/edc/cm.sas7bdat")) |>
 mh <- read_sas(paste0(here(), "/data/edc/mh.sas7bdat")) |> convert_blanks_to_na()
 
 # COA
-# EXCLUDED (efficacy): vin3 <- read_sas(paste0(here(), "/data/edc/vabs3.sas7bdat")) |> convert_blanks_to_na()
+# EXCLUDED - efficacy # vin3 <- read_sas(paste0(here(), "/data/edc/vabs3.sas7bdat")) |> convert_blanks_to_na()
 
-# EXCLUDED (efficacy): bsi3 <- read_sas(paste0(here(), "/data/edc/bsidiii.sas7bdat")) |> convert_blanks_to_na()
+# EXCLUDED - efficacy # bsi3 <- read_sas(paste0(here(), "/data/edc/bsidiii.sas7bdat")) |> convert_blanks_to_na()
 
-# EXCLUDED (efficacy): bsi4 <- read_sas(paste0(here(), "/data/edc/bsid.sas7bdat")) |> convert_blanks_to_na()
+# EXCLUDED - efficacy # bsi4 <- read_sas(paste0(here(), "/data/edc/bsid.sas7bdat")) |> convert_blanks_to_na()
 
-# EXCLUDED (efficacy): kauf <- read_sas(paste0(here(), "/data/edc/kabc.sas7bdat")) |> convert_blanks_to_na()
+# EXCLUDED - efficacy # kauf <- read_sas(paste0(here(), "/data/edc/kabc.sas7bdat")) |> convert_blanks_to_na()
 
 # ABR 
 abr <- read_sas(paste0(here(), "/data/edc/abr.sas7bdat")) |> convert_blanks_to_na()
@@ -302,9 +306,9 @@ vol <- read_sas(paste0(here(), "/data/Clario_DNLI_I_0001_Organ_Vol.sas7bdat")) |
 brn <- read_sas(paste0(here(), "/data/CLARIO_DNLI_I_0001_vMRI.sas7bdat")) |> 
   convert_blanks_to_na()
 
-# EXCLUDED (efficacy): # CSF HS
-# EXCLUDED (efficacy): csfhs <- read_csv(paste0(here(), "/data/frontage_dnli-i-0001_CSF_HS_DS.csv")) |>
-# EXCLUDED (efficacy):   convert_blanks_to_na()
+# EXCLUDED - efficacy # # CSF HS
+# EXCLUDED - efficacy # csfhs <- read_csv(paste0(here(), "/data/frontage_dnli-i-0001_CSF_HS_DS.csv")) |>
+# EXCLUDED - efficacy #   convert_blanks_to_na()
 
 # Urine HS
 urhs <- read_csv(paste0(here(), "/data/frontage_dnli-i-0001_urine_hs_ds.csv")) |> 
@@ -314,8 +318,8 @@ urhs <- read_csv(paste0(here(), "/data/frontage_dnli-i-0001_urine_hs_ds.csv")) |
 urcrea <- read_csv(paste0(here(), "/data/frontage_dnli-i-0001_urine_creatinine.csv")) |> 
   convert_blanks_to_na()
 
-# EXCLUDED (efficacy): # QS
-# EXCLUDED (efficacy): qs <- read_xpt(paste0(here(), "/data/", qs_current)) |> convert_blanks_to_na()
+# EXCLUDED - efficacy # # QS
+# EXCLUDED - efficacy # qs <- read_xpt(paste0(here(), "/data/", qs_current)) |> convert_blanks_to_na()
 
 # ADA
 ada <- read_csv(paste0(here(), "/data/bioagilytix_dnli-i-0001_ada.csv")) |> convert_blanks_to_na()
@@ -858,7 +862,7 @@ ada_stat <- ada |>
          TEST = "ADA Screen Result") |> 
   filter(!grepl("Unscheduled", VISIT, ignore.case = TRUE))
 
-# EXCLUDED (efficacy): CSF HS processing block removed
+# EXCLUDED - efficacy # CSF HS processing block removed
 
 # URHS
 urhs_vals <- urhs |> 
@@ -946,27 +950,15 @@ abr_vals <- abr |>
   select(-ABREAR, -TESTCD)
   
 
-# EXCLUDED (efficacy): QS/COA processing block removed
-# (KABC, VABS-III, BSID III/IV scores not included in safety report)
+# EXCLUDED - efficacy # QS/COA processing block removed
+# (CSF HS, KABC, VABS-III, BSID III/IV scores not included in safety report)
+
+# Combine all values (safety-only: urhs, vol, brn, abr only)
 testvals_cont <- bind_rows(
-  csfhs_vals,
   urhs_vals,
   vol_vals,
   brn_vals,
-  abr_vals,
-  kabc_vals,
-  vin3abrs8_vals,
-  vin3abc_vals,
-  b3C_raw_vals,
-  b3EC_raw_vals,
-  b3RC_raw_vals,
-  b3GM_raw_vals,
-  b3FM_raw_vals,
-  b4C_raw_vals,
-  b4EC_raw_vals,
-  b4RC_raw_vals,
-  b4GM_raw_vals,
-  b4FM_raw_vals
+  abr_vals
 ) |> 
   mutate(VAL = round_half_up(VAL, 1)) |> 
   left_join(safflds) |> 
@@ -1035,16 +1027,10 @@ vars <- c(
   "Mutation (S298P+/S298P-)",
   "Hearing Aid Use",
   "ADA Screen Result",
-  "CSF Heparan Sulfate (ng/mL)", "CSF Dermatan Sulfate (ng/mL)", 
+  # EXCLUDED - efficacy # "CSF Heparan Sulfate (ng/mL)", "CSF Dermatan Sulfate (ng/mL)",
   "Urine Heparan Sulfate (ng/ug Creatinine)", "Urine Dermatan Sulfate (ng/ug Creatinine)",
-  "Liver Volume MN", "Spleen Volume MN",
-  "Vineland 3 ABC", "Vineland 3 ABRS8",
-  "BSID III Cognitive Raw Score", "BSID III Expressive Communication Raw Score", 
-  "BSID III Receptive Communication Raw Score",
-  "BSID III Fine Motor Raw Score", "BSID III Gross Motor Raw Score", 
-  "BSID IV Cognitive Raw Score", "BSID IV Expressive Communication Raw Score", 
-  "BSID IV Receptive Communication Raw Score", 
-  "BSID IV Fine Motor Raw Score", "BSID IV Gross Motor Raw Score"
+  "Liver Volume MN", "Spleen Volume MN"
+  # EXCLUDED - efficacy # Vineland 3, BSID III/IV, KABC removed
 )
 
 tbl <- basic_table(show_colcounts = TRUE) |>
@@ -1343,13 +1329,13 @@ comp <- function(df, title, params){
 #| fig-width: 14
 #| fig-height: 8
 
-csf <- 
-comp(
-  df = testvals_cont,
-  title = "CSF (Biomarkers)",
-  params = c("CSF Heparan Sulfate (ng/mL)",
-             "CSF Dermatan Sulfate (ng/mL)")
-)
+# EXCLUDED - efficacy # csf <-
+# EXCLUDED - efficacy # comp(
+# EXCLUDED - efficacy #   df = testvals_cont,
+# EXCLUDED - efficacy #   title = "CSF (Biomarkers)",
+# EXCLUDED - efficacy #   params = c("CSF Heparan Sulfate (ng/mL)",
+# EXCLUDED - efficacy #              "CSF Dermatan Sulfate (ng/mL)")
+# EXCLUDED - efficacy # )
 
 urn <-
 comp(
@@ -1381,42 +1367,16 @@ comp(
   params = distinct(abr_vals, TEST) |> pull(TEST)
   )
 
-kabc <- 
-  comp(
-    df = testvals_cont |> filter(!is.na(VAL)),
-    title = "Kaufman Assessment Battery for Children",
-    params = distinct(kabc_vals, TEST) |> pull(TEST)
-  )
-
-vin <-
-  comp(
-    df = testvals_cont |> filter(!is.na(VAL)),
-    title = "Vineland 3",
-    params = c("Vineland 3 ABRS8",
-               "Vineland 3 ABC")
-  )
-
-b3 <-
-  comp(
-    df = testvals_cont |> filter(!is.na(VAL)),
-    title = "BSID III",
-    params = c("BSID III Cognitive Raw Score",
-               "BSID III Expressive Communication Raw Score",
-               "BSID III Receptive Communication Raw Score",
-               "BSID III Gross Motor Raw Score",
-               "BSID III Fine Motor Raw Score")
-  )
-
-b4 <-
-  comp(
-    df = testvals_cont |> filter(!is.na(VAL)),
-    title = "BSID IV",
-    params = c("BSID IV Cognitive Raw Score",
-               "BSID IV Expressive Communication Raw Score",
-               "BSID IV Receptive Communication Raw Score",
-               "BSID IV Gross Motor Raw Score",
-               "BSID IV Fine Motor Raw Score")
-  )
+# EXCLUDED - efficacy # kabc, vin, b3, b4 comp calls removed (Clinical Outcomes)
+# EXCLUDED - efficacy # kabc <- comp(df = testvals_cont |> filter(!is.na(VAL)),
+# EXCLUDED - efficacy #   title = "Kaufman Assessment Battery for Children",
+# EXCLUDED - efficacy #   params = distinct(kabc_vals, TEST) |> pull(TEST))
+# EXCLUDED - efficacy # vin <- comp(df = testvals_cont |> filter(!is.na(VAL)),
+# EXCLUDED - efficacy #   title = "Vineland 3", params = c("Vineland 3 ABRS8", "Vineland 3 ABC"))
+# EXCLUDED - efficacy # b3 <- comp(df = testvals_cont |> filter(!is.na(VAL)),
+# EXCLUDED - efficacy #   title = "BSID III", params = c(...))
+# EXCLUDED - efficacy # b4 <- comp(df = testvals_cont |> filter(!is.na(VAL)),
+# EXCLUDED - efficacy #   title = "BSID IV", params = c(...))
 ```
 
 ```{r}
@@ -1432,7 +1392,8 @@ foot <- paste("Biomarker samples analyzed at a specialty laboratory.",
               "Study week for unscheduled assessments was determined by dividing study day by 7.",
               sep = "\n")
 
-(csf + urn) +
+# EXCLUDED - efficacy # CSF plot removed; showing Urine only
+urn +
   plot_annotation(
     caption = foot,
     theme = theme(
@@ -1492,51 +1453,7 @@ abrc +
 
 \newpage
 
-```{r}
-#| echo: false
-#| message: false
-#| warning: false
-#| fig-width: 14
-#| fig-height: 8
-
-foot <- paste("Blue markers indicate scheduled assessments populated in the dataset.", 
-              "Gray markers indicate assessments scheduled but not populated in the dataset.",
-              "Study week for unscheduled assessments was determined by dividing study day by 7.",
-              sep = "\n")
-
-(kabc + vin) +
-  plot_annotation(
-    caption = foot,
-    theme = theme(
-      plot.caption = element_text(hjust = 0, size = 10),
-      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
-    )
-  )
-```
-
-\newpage
-
-```{r}
-#| echo: false
-#| message: false
-#| warning: false
-#| fig-width: 14
-#| fig-height: 8
-
-foot <- paste("Blue markers indicate scheduled assessments populated in the dataset.", 
-              "Gray markers indicate assessments scheduled but not populated in the dataset.",
-              "Study week for unscheduled assessments was determined by dividing study day by 7.",
-              sep = "\n")
-
-(b3 + b4) +
-  plot_annotation(
-    caption = foot,
-    theme = theme(
-      plot.caption = element_text(hjust = 0, size = 10),
-      plot.margin  = margin(t = 5.5, r = 5.5, b = 15, l = 5.5)
-    )
-  )
-```
+<!-- EXCLUDED - efficacy: KABC+Vineland and BSID III+IV completion plots removed -->
 
 \newpage
 

@@ -69,7 +69,7 @@ Per Protocol V6 Section 9.1, the following **efficacy data** are excluded from t
 
 ## AI Pipeline
 
-This report was generated using a 7-agent pipeline in [Claude Code](https://claude.ai/claude-code). See [pipeline metadata](docs/pipeline-metadata.md) for full details.
+This report was generated using a multi-agent pipeline in [Claude Code](https://claude.ai/claude-code). See [pipeline metadata](docs/pipeline-metadata.md) and [token consumption tracker](docs/token-consumption-tracker.md) for full details.
 
 | Phase | Agents | Task |
 |-------|--------|------|
@@ -77,8 +77,19 @@ This report was generated using a 7-agent pipeline in [Claude Code](https://clau
 | 2. Planning | Plan + Protocol Explorer | Repo design, efficacy/safety classification from Protocol V6 |
 | 3. Implementation | QMD Creator + Main Pipeline | Safety-only QMD template (5,376 lines), HTML report (6.6 MB), scripts |
 | 4. Review | Clinician + Biostatistician (parallel) | Safety signal detection across all 8 report sections |
+| 5. Data Integration | Box Download + Delta Analysis | 6 CSV files (3 months), monthly delta comparison |
+| 6. Report Generation | MMR Generator + PDF Pipeline | Template-matched reports for JAN/FEB/MAR 2026 |
 
-**Total token usage:** ~235K tokens across agents
+### Token Usage
+
+| Session | Tokens (Input) | Tokens (Output) | Cost (est.) | Work Done |
+|---------|---------------|-----------------|-------------|-----------|
+| Session 1: Initial Pipeline | ~2.5M | ~800K | ~$19.50 | Safety-only template, HTML report, clinician + biostatistician reviews, GitHub repo |
+| Session 2: Data Integration | ~1.5M | ~500K | ~$12.00 | Box data download (6 CSVs), delta analysis, MMR generator v1, 3 HTML + 3 PDF reports |
+| Session 3: Template Alignment | ~1.5M | ~500K | ~$12.00 | MMR generator v2 (template-matched), 3 HTML + 3 PDF final reports, token tracker |
+| **Total** | **~5.5M** | **~1.8M** | **~$43.50** | **Full pipeline: raw data → validated safety MMR** |
+
+*Note: Token estimates are approximate. Actual usage depends on context window utilization and conversation length. Cost based on Claude claude-sonnet-4-20250514 pricing ($3/$15 per 1M input/output tokens).*
 
 ## Repository Structure
 

@@ -490,18 +490,33 @@ def make_edish_plot(lab, xtest, ylabel_prefix):
     ax.set_yscale('log')
     ax.set_xlim(0.1, 100)
     ax.set_ylim(0.1, 100)
-    ax.set_xlabel(f'{xtest} (xULN)', fontsize=10)
-    ax.set_ylabel('Total Bilirubin (xULN)', fontsize=10)
+
+    # ×ULN tick labels (clinical multiples instead of plain powers of 10)
+    from matplotlib.ticker import FixedLocator, FixedFormatter
+    uln_ticks = [0.1, 0.25, 0.5, 1, 2, 3, 5, 10, 20, 50, 100]
+    uln_x_labels = [f'{v}×' for v in uln_ticks]
+    uln_y_labels = [f'{v}×' for v in uln_ticks]
+    ax.xaxis.set_major_locator(FixedLocator(uln_ticks))
+    ax.xaxis.set_major_formatter(FixedFormatter(uln_x_labels))
+    ax.yaxis.set_major_locator(FixedLocator(uln_ticks))
+    ax.yaxis.set_major_formatter(FixedFormatter(uln_y_labels))
+    ax.xaxis.set_minor_locator(FixedLocator([]))  # suppress auto minor ticks
+    ax.yaxis.set_minor_locator(FixedLocator([]))
+
+    ax.set_xlabel(f'{xtest} (×ULN)', fontsize=10)
+    ax.set_ylabel('Total Bilirubin (×ULN)', fontsize=10)
     ax.set_title(f'eDISH Plot: {ylabel_prefix} vs Total Bilirubin', fontsize=12, fontweight='bold')
 
-    ax.text(0.15, 50, "Hy's Law\nQuadrant", fontsize=8, color='#dc2626', alpha=0.5, fontstyle='italic')
-    ax.text(10, 50, "Hy's Law\nQuadrant", fontsize=8, color='#dc2626', alpha=0.7, fontweight='bold')
-    ax.text(10, 0.15, 'Temple\'s Corollary', fontsize=8, color='#6b7280', alpha=0.5, fontstyle='italic')
+    # Quadrant labels
+    ax.text(0.15, 50, 'Cholestasis', fontsize=8, color='#6b7280', alpha=0.6, fontstyle='italic')
+    ax.text(10, 50, "Potential\nHy's Law", fontsize=8, color='#dc2626', alpha=0.7, fontweight='bold')
+    ax.text(10, 0.15, "Temple's\nCorollary", fontsize=8, color='#6b7280', alpha=0.5, fontstyle='italic')
     ax.text(0.15, 0.15, 'Normal', fontsize=8, color='#22c55e', alpha=0.5, fontstyle='italic')
 
     ax.legend(fontsize=8, loc='upper left', framealpha=0.9)
-    ax.grid(True, which='both', alpha=0.15)
-    ax.tick_params(labelsize=8)
+    ax.grid(True, which='major', alpha=0.2, linestyle='-')
+    ax.grid(True, which='minor', alpha=0.08, linestyle=':')
+    ax.tick_params(labelsize=8, which='both')
 
     hys = merged[(merged['x_xuln'] > 3) & (merged['y_xuln'] > 2)]
     n_hys = hys['SUBJID'].nunique()
@@ -1824,10 +1839,6 @@ def generate_report(month):
 <h3>4.1 Study Drug Exposure by Cohort (Cumulative to Data Cut)</h3><figure style="margin:24px 0; text-align:center;"><img alt="Figure 4.1 \u2014 Study Drug Exposure by Cohort (Cumulative to Data Cut: {data_cut_date})" src="data:image/png;base64,{exposure_b64}" style="width:100%; max-width:1400px; border:1px solid #ddd; border-radius:4px;"/><figcaption style="font-size:0.85em; color:#555; margin-top:6px; font-style:italic;">Figure 4.1 \u2014 Study Drug Exposure by Cohort (Cumulative to Data Cut: {data_cut_date}). Horizontal bars = treatment duration; white ticks = individual infusions; \u25bc = IRR event; \u2192 = ongoing at data cut.</figcaption></figure>
 <h3 id="sec4-2-compliance">4.2 Individual Participant Profiles: Drug Exposure, Derived Weekly Dose Compliance, IRR Adverse Events and Action Taken</h3>
 <figure style="margin:24px 0; text-align:center;"><img alt="Figure 4.2 \u2014 Individual Participant Profiles: Derived Weekly Dose Compliance, IRR Adverse Events by Severity, and Action Taken" src="data:image/png;base64,{compliance_b64}" style="width:100%; max-width:1400px; border:1px solid #ddd; border-radius:4px;"/><figcaption style="font-size:0.83em; color:#555; margin-top:5px; font-style:italic;">Figure 4.2 \u2014 Individual Participant Profiles: Derived Weekly Dose Compliance, IRR Adverse Events by Severity, and Action Taken (Data Cut: {data_cut_date}). Dot colors: green \u226590%, teal 75\u2013&lt;90%, blue 50\u2013&lt;75%, red &lt;50%, purple &gt;100%. Triangle = drug interrupted. Yellow lines = IRR events (dotted = Mild, dash-dot = Moderate, solid = Severe).</figcaption></figure>
-'''
-    # Add pair-page detail views (2 subjects per page)
-    for pi, page_b64 in enumerate(compliance_pair_pages):
-        html += f'''<figure style="margin:16px 0; text-align:center;"><img alt="Figure 4.2.{pi+1} \u2014 Compliance Detail (Subjects {pi*2+1}\u2013{min(pi*2+2, 20)})" src="data:image/png;base64,{page_b64}" style="width:100%; max-width:1200px; border:1px solid #ddd; border-radius:4px;"/></figure>
 '''
     html += f'''
 <table>

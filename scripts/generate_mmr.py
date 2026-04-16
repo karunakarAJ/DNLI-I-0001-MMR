@@ -1559,7 +1559,7 @@ def make_ada_titer_plot(data_cut_date):
         return f'{x:.0f}'
     ax_line.yaxis.set_major_formatter(FuncFormatter(titer_fmt))
 
-    fig.suptitle(f'Figure 4.2 — ADA Titer Heatmap and Titer Profiles\n(Data cut: {data_cut_date})',
+    fig.suptitle(f'Figure 4.3 — ADA Titer Heatmap and Titer Profiles\n(Data cut: {data_cut_date})',
                 fontsize=12, fontweight='bold', y=0.02)
     fig.tight_layout(rect=[0, 0.04, 1, 1])
 
@@ -1842,7 +1842,7 @@ def generate_report(month):
 <tr><td>Participants with \u22651 DEC-mandated dose adjustment, n (%)</td><td class="c">2 (50%)</td><td class="c">2 (50%)</td><td class="c">3 (30%)</td><td class="c">0</td><td class="c">7 (35%)</td></tr>
 </tbody>
 </table>
-<h3>4.2 Anti-Drug Antibody (ADA) Status Summary</h3>
+<h3 id="sec4-3-ada">4.3 Anti-Drug Antibody (ADA) Status Summary</h3>
 <div class="callout orange">
   \u26a0 <strong>Difference vs published:</strong> The Bioagilytix ADA file in this data package is dated {ada_date.split(" / ")[-1]}, compared with the published MMR ADA transfer date of {ada_date.split(" / ")[0]}. This adds additional calendar days of data. The immunogenicity summary below reflects the updated file including results for late-visit timepoints (Wk 97) available through the {ada_date.split(" / ")[-1]} cut.
 </div>
@@ -1858,8 +1858,8 @@ def generate_report(month):
 </tbody>
 </table>
 <figure style="margin:12px 0 20px;">
-<img alt="Figure 4.2 \u2014 ADA Titer Heatmap (left) and Titer Profiles for High-Burden Participants (right; \u2605 = neutralizing)" src="data:image/png;base64,{ada_titer_b64}" style="width:100%; max-width:1200px; border:1px solid #ddd; border-radius:4px;"/>
-<figcaption style="font-size:10px;color:#4a5568;font-style:italic;margin-top:4px;text-align:center;">Figure 4.2 \u2014 ADA Titer Heatmap (left) and Titer Profiles for High-Burden Participants (right; \u2605 = neutralizing)</figcaption>
+<img alt="Figure 4.3 \u2014 ADA Titer Heatmap (left) and Titer Profiles for High-Burden Participants (right; \u2605 = neutralizing)" src="data:image/png;base64,{ada_titer_b64}" style="width:100%; max-width:1200px; border:1px solid #ddd; border-radius:4px;"/>
+<figcaption style="font-size:10px;color:#4a5568;font-style:italic;margin-top:4px;text-align:center;">Figure 4.3 \u2014 ADA Titer Heatmap (left) and Titer Profiles for High-Burden Participants (right; \u2605 = neutralizing)</figcaption>
 </figure>
 <p class="note">Source: bioagilytix_dnli-i-0001_ada.csv (this folder, {ada_date.split(" / ")[-1]}). Key ADA-positive participants with sustained high titers: 0016-9004 (neutralizing, persistent), 2065-9002 (very high titer, Week 73), 0016-9003 (persistent positive, Wk 97 titer: 3,542,940). ADA positivity is associated with DEC-mandated dose adjustments in at least 7 participants.</p>
 </div>

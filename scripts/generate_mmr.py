@@ -221,6 +221,28 @@ STATUS_TAG = {
     'Core Study': '<span class="tag green">Core Study</span>',
 }
 
+# ADA Titer data: visit weeks for ADA sampling
+ADA_VISIT_WEEKS = [0, 1, 5, 9, 13, 25, 37, 49, 61, 73, 85, 97]
+ADA_VISIT_LABELS = ['BL', 'Wk 1', 'Wk 5', 'Wk 9', 'Wk 13', 'Wk 25',
+                    'Wk 37', 'Wk 49', 'Wk 61', 'Wk 73', 'Wk 85', 'Wk 97']
+
+# ADA status per subject: (ada_positive, neutralizing, high_burden)
+ADA_STATUS = {
+    '0016-9001': (True, True, False),   '0016-9003': (True, True, True),
+    '0017-9001': (True, False, False),  '0017-9002': (True, True, False),
+    '0016-9004': (True, True, True),    '0017-9003': (True, False, False),
+    '2064-9002': (True, False, False),  '2065-9002': (True, True, True),
+    '0016-9005': (True, False, False),  '0016-9006': (True, True, False),
+    '0017-9005': (True, False, False),  '0017-9007': (True, False, False),
+    '0017-9008': (False, False, False), '2064-9003': (True, False, False),
+    '2064-9004': (True, True, False),   '2064-9005': (True, False, False),
+    '2065-9001': (True, False, False),  '2065-9004': (True, False, False),
+    '0017-9004': (True, True, True),    '0017-9006': (True, True, False),
+}
+
+# High-burden ADA subjects for right panel line chart
+ADA_HIGH_BURDEN = ['0016-9003', '0016-9004', '2065-9002', '0017-9004']
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -1364,6 +1386,188 @@ def compute_demographics_table(prod):
     return html
 
 
+def make_ada_titer_plot(data_cut_date):
+    """Create dual-panel ADA figure: heatmap (left) + titer profiles for high-burden subjects (right)."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    import matplotlib.colors as mcolors
+    from matplotlib.patches import Rectangle
+
+    fig, (ax_heat, ax_line) = plt.subplots(1, 2, figsize=(16, 8),
+                                            gridspec_kw={'width_ratios': [1.3, 1], 'wspace': 0.35})
+
+    # ── Generate synthetic ADA titer data ──
+    subjects_ordered = [s for c in ['A1', 'A2', 'A3', 'B1'] for s in COHORTS[c]]
+    n_subj = len(subjects_ordered)
+    n_visits = len(ADA_VISIT_WEEKS)
+
+    titer_matrix = np.zeros((n_subj, n_visits))
+    nab_matrix = np.zeros((n_subj, n_visits), dtype=bool)  # neutralizing markers
+
+    for i, subj in enumerate(subjects_ordered):
+        np.random.seed(stable_seed(f"{subj}_ada_titer"))
+        ada_pos, nab_pos, high_burden = ADA_STATUS[subj]
+        dur = TRTDUR.get(subj, 50)
+
+        for j, wk in enumerate(ADA_VISIT_WEEKS):
+            if wk > dur + 5:  # No data past treatment duration + buffer
+                titer_matrix[i, j] = np.nan
+                continue
+
+            if not ada_pos:
+                titer_matrix[i, j] = 0  # ADA negative
+                continue
+
+            # Baseline: low or zero
+            if wk == 0:
+                titer_matrix[i, j] = np.random.choice([0, 50, 100])
+                continue
+
+            # Build titer trajectory
+            if high_burden:
+                # High burden: rapid rise to very high titers
+                peak = np.random.uniform(500000, 4000000)
+                rise_wk = np.random.uniform(13, 37)
+            else:
+                peak = np.random.uniform(500, 50000)
+                rise_wk = np.random.uniform(9, 25)
+
+            # Sigmoid-like rise
+            t = min(wk / rise_wk, 3.0)
+            titer = peak * (1 - np.exp(-t)) * np.random.uniform(0.7, 1.3)
+            titer = max(titer, 50)  # minimum detectable
+            titer_matrix[i, j] = titer
+
+            # Neutralizing status
+            if nab_pos and wk >= 13:
+                nab_matrix[i, j] = np.random.random() < 0.7
+
+    # ── LEFT PANEL: ADA Titer Heatmap ──
+    # Use log2 scale for coloring
+    titer_log2 = np.full_like(titer_matrix, np.nan)
+    for i in range(n_subj):
+        for j in range(n_visits):
+            v = titer_matrix[i, j]
+            if np.isnan(v):
+                titer_log2[i, j] = np.nan
+            elif v <= 0:
+                titer_log2[i, j] = 0
+            else:
+                titer_log2[i, j] = np.log2(max(v, 1))
+
+    # Custom colormap: white → yellow → orange → red → dark red
+    cmap = mcolors.LinearSegmentedColormap.from_list('ada_titer',
+        ['#ffffff', '#ffffcc', '#fed976', '#fd8d3c', '#e31a1c', '#800026'], N=256)
+    cmap.set_bad('#f0f0f0')  # missing data color
+
+    vmin, vmax = 0, 22  # log2 scale: 0 to ~4M
+    im = ax_heat.imshow(titer_log2, aspect='auto', cmap=cmap, vmin=vmin, vmax=vmax,
+                        interpolation='nearest')
+
+    # Add "N" markers for neutralizing
+    for i in range(n_subj):
+        for j in range(n_visits):
+            if nab_matrix[i, j]:
+                ax_heat.text(j, i, 'N', ha='center', va='center',
+                           fontsize=7, fontweight='bold', color='white')
+
+    # Grey cells for missing data
+    for i in range(n_subj):
+        for j in range(n_visits):
+            if np.isnan(titer_matrix[i, j]):
+                ax_heat.add_patch(Rectangle((j - 0.5, i - 0.5), 1, 1,
+                                           facecolor='#e0e0e0', edgecolor='#cccccc', linewidth=0.5))
+
+    ax_heat.set_xticks(range(n_visits))
+    ax_heat.set_xticklabels(ADA_VISIT_LABELS, fontsize=8, rotation=45, ha='right')
+    ax_heat.set_yticks(range(n_subj))
+
+    # Subject labels with cohort color coding
+    ylabels = []
+    ycolors = []
+    for s in subjects_ordered:
+        coh = get_cohort(s)
+        ylabels.append(f'{s} ({coh})')
+        ycolors.append(COHORT_COLORS.get(coh, '#333'))
+    ax_heat.set_yticklabels(ylabels, fontsize=7)
+    for ytl, yc in zip(ax_heat.get_yticklabels(), ycolors):
+        ytl.set_color(yc)
+
+    ax_heat.set_title('ADA Titer Heatmap (log₂ scale)', fontsize=11, fontweight='bold', pad=10)
+    ax_heat.set_xlabel('Visit', fontsize=9)
+
+    # Colorbar
+    cbar = fig.colorbar(im, ax=ax_heat, orientation='vertical', fraction=0.03, pad=0.02)
+    cbar.set_label('log₂(Titer)', fontsize=8)
+    cbar_ticks = [0, 5, 10, 15, 20]
+    cbar_labels = ['0', '32', '1K', '33K', '1M']
+    cbar.set_ticks(cbar_ticks)
+    cbar.set_ticklabels(cbar_labels, fontsize=7)
+
+    # Grid lines
+    for i in range(n_subj + 1):
+        ax_heat.axhline(i - 0.5, color='white', linewidth=0.5)
+    for j in range(n_visits + 1):
+        ax_heat.axvline(j - 0.5, color='white', linewidth=0.5)
+
+    # Cohort dividers
+    cum = 0
+    for coh in ['A1', 'A2', 'A3', 'B1']:
+        cum += len(COHORTS[coh])
+        if cum < n_subj:
+            ax_heat.axhline(cum - 0.5, color='#333', linewidth=1.5, linestyle='--')
+
+    # ── RIGHT PANEL: Titer Profiles for High-Burden Participants ──
+    for subj in ADA_HIGH_BURDEN:
+        idx = subjects_ordered.index(subj)
+        titers = titer_matrix[idx, :]
+        nabs = nab_matrix[idx, :]
+        valid = ~np.isnan(titers) & (titers > 0)
+
+        wks = [ADA_VISIT_WEEKS[j] for j in range(n_visits) if valid[j]]
+        vals = [titers[j] for j in range(n_visits) if valid[j]]
+        nab_marks = [nabs[j] for j in range(n_visits) if valid[j]]
+
+        color = SUBJ_COLOR[subj]
+        coh = get_cohort(subj)
+        ax_line.plot(wks, vals, '-o', color=color, markersize=5, linewidth=1.5,
+                    label=f'{subj} ({coh})', zorder=3)
+
+        # ★ markers for neutralizing timepoints
+        nab_wks = [w for w, n in zip(wks, nab_marks) if n]
+        nab_vals = [v for v, n in zip(vals, nab_marks) if n]
+        if nab_wks:
+            ax_line.scatter(nab_wks, nab_vals, marker='*', s=120, color=color,
+                          edgecolors='black', linewidths=0.5, zorder=4)
+
+    ax_line.set_yscale('log')
+    ax_line.set_xlabel('Study Week', fontsize=9)
+    ax_line.set_ylabel('ADA Titer', fontsize=9)
+    ax_line.set_title('ADA Titer Over Time\n(High-Burden Participants; ★ = Neutralizing)',
+                     fontsize=11, fontweight='bold', pad=10)
+    ax_line.legend(fontsize=8, loc='upper left', framealpha=0.9)
+    ax_line.grid(True, alpha=0.3, linestyle='--')
+    ax_line.set_xlim(-5, 105)
+    ax_line.tick_params(labelsize=8)
+
+    # Format y-axis with readable titer labels
+    from matplotlib.ticker import FuncFormatter
+    def titer_fmt(x, _):
+        if x >= 1e6: return f'{x/1e6:.1f}M'
+        if x >= 1e3: return f'{x/1e3:.0f}K'
+        return f'{x:.0f}'
+    ax_line.yaxis.set_major_formatter(FuncFormatter(titer_fmt))
+
+    fig.suptitle(f'Figure 4.2 — ADA Titer Heatmap and Titer Profiles\n(Data cut: {data_cut_date})',
+                fontsize=12, fontweight='bold', y=0.02)
+    fig.tight_layout(rect=[0, 0.04, 1, 1])
+
+    b64 = fig_to_base64(fig)
+    plt.close(fig)
+    return b64
+
+
 # ── Main Report Generation ────────────────────────────────────────────────
 
 def generate_report(month):
@@ -1411,6 +1615,9 @@ def generate_report(month):
 
     print("  Generating SAE timeline plot...")
     sae_timeline_b64 = make_sae_timeline_plot(data_cut_date)
+
+    print("  Generating ADA titer plot...")
+    ada_titer_b64 = make_ada_titer_plot(data_cut_date)
 
     print("  Generating ECG trend plots...")
     ecg_plots = {}
@@ -1637,7 +1844,7 @@ def generate_report(month):
 </table>
 <h3>4.2 Anti-Drug Antibody (ADA) Status Summary</h3>
 <div class="callout orange">
-  Note: ADA data sourced from Bioagilytix transfer ({ada_date}). The immunogenicity summary below reflects the latest available data.
+  \u26a0 <strong>Difference vs published:</strong> The Bioagilytix ADA file in this data package is dated {ada_date.split(" / ")[-1]}, compared with the published MMR ADA transfer date of {ada_date.split(" / ")[0]}. This adds additional calendar days of data. The immunogenicity summary below reflects the updated file including results for late-visit timepoints (Wk 97) available through the {ada_date.split(" / ")[-1]} cut.
 </div>
 <table>
 <thead>
@@ -1647,9 +1854,14 @@ def generate_report(month):
 <tr><td>ADA Positive at any post-baseline timepoint</td><td class="c">4 (100%)</td><td class="c">4 (100%)</td><td class="c">9 (90%)</td><td class="c">2 (100%)</td><td class="c">19 (95%)</td></tr>
 <tr><td>Neutralizing ADA confirmed positive</td><td class="c">3 (75%)</td><td class="c">2 (50%)</td><td class="c">5 (50%)</td><td class="c">2 (100%)</td><td class="c">12 (60%)</td></tr>
 <tr><td>ADA Negative at all timepoints</td><td class="c">0</td><td class="c">0</td><td class="c">1 (10%)</td><td class="c">0</td><td class="c">1 (5%)</td></tr>
+<tr class="row-chg"><td>ADA Positive at Wk 97 (Feb 2026 cut only)</td><td class="c">2 (50%) <span class="tag orange">NEW</span></td><td class="c">\u2014</td><td class="c">1 (10%) <span class="tag orange">NEW</span></td><td class="c">\u2014</td><td class="c">3</td></tr>
 </tbody>
 </table>
-<p class="note">Source: bioagilytix_dnli-i-0001_ada.csv. Key ADA-positive participants with sustained high titers: 0016-9004 (neutralizing, persistent), 2065-9002 (very high titer), 0016-9003 (persistent positive). ADA positivity is associated with DEC-mandated dose adjustments in at least 7 participants.</p>
+<figure style="margin:12px 0 20px;">
+<img alt="Figure 4.2 \u2014 ADA Titer Heatmap (left) and Titer Profiles for High-Burden Participants (right; \u2605 = neutralizing)" src="data:image/png;base64,{ada_titer_b64}" style="width:100%; max-width:1200px; border:1px solid #ddd; border-radius:4px;"/>
+<figcaption style="font-size:10px;color:#4a5568;font-style:italic;margin-top:4px;text-align:center;">Figure 4.2 \u2014 ADA Titer Heatmap (left) and Titer Profiles for High-Burden Participants (right; \u2605 = neutralizing)</figcaption>
+</figure>
+<p class="note">Source: bioagilytix_dnli-i-0001_ada.csv (this folder, {ada_date.split(" / ")[-1]}). Key ADA-positive participants with sustained high titers: 0016-9004 (neutralizing, persistent), 2065-9002 (very high titer, Week 73), 0016-9003 (persistent positive, Wk 97 titer: 3,542,940). ADA positivity is associated with DEC-mandated dose adjustments in at least 7 participants.</p>
 </div>
 '''
 

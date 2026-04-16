@@ -13,6 +13,7 @@ import sys
 import os
 import base64
 import io
+import hashlib
 import warnings
 from datetime import datetime
 from pathlib import Path
@@ -76,26 +77,71 @@ HEMATOLOGY_TESTS = ['Leukocytes', 'Erythrocytes', 'Hemoglobin', 'Hematocrit',
 
 COHORT_COLORS = {'A1': '#2563eb', 'A2': '#16a34a', 'A3': '#d97706', 'B1': '#dc2626'}
 
+# Cohort panel background colors (matching reference template)
+COHORT_BG = {'A1': '#e8f0fe', 'A2': '#e8f8e8', 'A3': '#f0faf0', 'B1': '#f3e8f9'}
+
+# Colorblind-friendly 20-colour subject palette (from R paramplot)
+SUBJ_PALETTE = [
+    "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2",
+    "#D55E00", "#CC79A7", "#999999", "#332288", "#88CCEE",
+    "#44AA99", "#117733", "#DDCC77", "#AA4499", "#661100",
+    "#6699CC", "#888888", "#1B9E77", "#E7298A", "#A6761D",
+]
+
+# Global subject ordering and color map
+ALL_SUBJECTS_ORDERED = [(s, c) for c in ['A1', 'A2', 'A3', 'B1'] for s in COHORTS[c]]
+SUBJ_COLOR = {s: SUBJ_PALETTE[i % 20] for i, (s, _) in enumerate(ALL_SUBJECTS_ORDERED)}
+
+# Visit labels for different plot types
+LAB_VISIT_LABELS = ['Wk -6', 'BL', 'Wk 3', 'Wk 5', 'Wk 7', 'Wk 9', 'Wk 13',
+                    'Wk 17', 'Wk 21', 'Wk 25', 'Wk 37', 'Wk 49', 'Wk 61',
+                    'Wk 73', 'Wk 85', 'Wk 97', 'Wk 109']
+LAB_VISIT_WEEKS = [-6, 0, 3, 5, 7, 9, 13, 17, 21, 25, 37, 49, 61, 73, 85, 97, 109]
+
+ECG_VISIT_LABELS = ['BL', 'Wk 1\nPRE', 'Wk 3\nPRE', 'Wk 5\nPRE', 'Wk 7\nPRE',
+                    'Wk 13\nPRE', 'Wk 25\nPRE', 'Wk 49\nPRE']
+ECG_VISIT_WEEKS = [0, 1, 3, 5, 7, 13, 25, 49]
+
+VS_VISIT_LABELS = ['BL', 'Wk 1', 'Wk 3', 'Wk 5', 'Wk 7', 'Wk 9', 'Wk 13',
+                   'Wk 17', 'Wk 21', 'Wk 25', 'Wk 37', 'Wk 49', 'Wk 61',
+                   'Wk 73', 'Wk 97']
+VS_VISIT_WEEKS = [0, 1, 3, 5, 7, 9, 13, 17, 21, 25, 37, 49, 61, 73, 97]
+
 # ECG parameters: (name, unit, LLN, ULN, baseline_mean, trend, noise)
 ECG_PARAMS = [
     ('QTcF', 'msec', 350, 450, 400, 0.5, 12),
-    ('HR', 'bpm', 50, 110, 90, 0.5, 8),
+    ('HR', 'bpm', 50, 130, 90, 0.5, 8),
     ('QRS', 'msec', 70, 120, 90, 0.1, 5),
     ('PR', 'msec', 120, 200, 145, 0.2, 6),
     ('QT', 'msec', 300, 450, 380, 0.3, 10),
 ]
 
-ECG_VISITS = [0, 1, 3, 5, 7, 13, 25, 49]  # Week numbers
+ECG_PARAM_SPECS = {
+    'QTcF': ('msec', 350, 450, 400, 0.0, 12),
+    'HR': ('bpm', 50, 130, 90, 0.0, 8),
+    'QRS': ('msec', 70, 120, 90, 0.0, 5),
+    'PR': ('msec', 120, 200, 145, 0.0, 6),
+    'QT': ('msec', 300, 450, 380, 0.0, 10),
+}
 
 # Vital signs parameters: (name, unit, LLN, ULN, baseline_mean, noise)
 VS_PARAMS = [
     ('Systolic BP', 'mmHg', 90, 130, 100, 5),
     ('Diastolic BP', 'mmHg', 55, 85, 65, 3),
-    ('Pulse', 'bpm', 60, 120, 90, 8),
+    ('Pulse', 'bpm', 60, 130, 90, 8),
     ('SpO2', '%', 92, 100, 97.5, 0.5),
     ('Temperature', '\u00b0C', 36.0, 38.0, 36.8, 0.15),
     ('Weight', 'kg', 10, 30, 18, 0.5),
 ]
+
+VS_PARAM_SPECS = {
+    'Systolic BP': ('mmHg', 90, 130, 100, 5),
+    'Diastolic BP': ('mmHg', 55, 85, 65, 3),
+    'Pulse': ('bpm', 60, 130, 90, 8),
+    'SpO2': ('%', 92, 100, 97.5, 0.5),
+    'Temperature': ('\u00b0C', 36.0, 38.0, 36.8, 0.15),
+    'Weight': ('kg', 10, 30, 18, 0.5),
+}
 
 VS_VISITS = [0, 1, 3, 5, 7, 9, 13, 17, 21, 25, 37, 49, 61, 73, 97]  # Week numbers
 
@@ -234,6 +280,56 @@ def fig_to_base64(fig):
 
 # ── Plot Functions ────────────────────────────────────────────────────────
 
+
+def stable_seed(s):
+    """Reproducible seed from a string (hashlib-based, unlike hash())."""
+    return int(hashlib.md5(s.encode()).hexdigest(), 16) % (2**31)
+
+
+def _add_bottom_indicator_legend(fig):
+    """Add the bottom-center normalized indicator legend strip."""
+    fig.text(0.5, -0.02,
+             '\u25cf Normalized Indicator (Age & Gender):   '
+             '\u25cf HIGH   \u25cf NORMAL   \u25cf LOW',
+             ha='center', va='top', fontsize=8,
+             fontfamily='sans-serif')
+    # Overlay coloured dots using separate text calls
+    # (matplotlib doesn't support inline colour changes easily,
+    #  so we approximate with a single grey line — the panel legends
+    #  already carry the colour semantics.)
+
+
+def _setup_cohort_panel(ax, coh, n_subjects, visit_weeks, visit_labels,
+                        uln_val, lln_val):
+    """Apply common cohort-panel styling: background, grid, ref lines, labels."""
+    ax.set_facecolor(COHORT_BG[coh])
+    ax.set_title(f'Cohort {coh}  (N={n_subjects})', fontsize=9, fontweight='bold')
+    ax.set_xticks(range(len(visit_weeks)))
+    ax.set_xticklabels(visit_labels, fontsize=6.5, rotation=45, ha='right')
+    ax.grid(True, axis='y', linestyle='--', alpha=0.3)
+
+    # ULN / LLN dashed lines with right-edge text labels
+    if uln_val is not None:
+        ax.axhline(y=uln_val, color='#f97316', linestyle='--', linewidth=1, alpha=0.7)
+        ax.text(len(visit_weeks) - 0.5, uln_val, f'ULN={uln_val:.0f}',
+                fontsize=6, color='#f97316', va='bottom', ha='right')
+    if lln_val is not None:
+        ax.axhline(y=lln_val, color='#3b82f6', linestyle='--', linewidth=1, alpha=0.7)
+        ax.text(len(visit_weeks) - 0.5, lln_val, f'LLN={lln_val:.0f}',
+                fontsize=6, color='#3b82f6', va='top', ha='right')
+
+
+def _build_panel_legend(ax, legend_handles):
+    """Build per-panel legend with subject IDs + HIGH/LOW indicators."""
+    from matplotlib.lines import Line2D
+    legend_handles.append(Line2D([], [], marker='^', color='red', linestyle='None',
+                                 markersize=5, label='HIGH'))
+    legend_handles.append(Line2D([], [], marker='v', color='#3b82f6', linestyle='None',
+                                 markersize=5, label='LOW'))
+    ax.legend(handles=legend_handles, fontsize=7, loc='upper right',
+              framealpha=0.9, edgecolor='#cccccc', fancybox=True)
+
+
 def get_visit_week(visit_str):
     """Extract numeric week from visit string, or None."""
     if pd.isna(visit_str):
@@ -252,10 +348,11 @@ def get_visit_week(visit_str):
 
 
 def make_lab_trend_plot(lab, test_name, fig_num):
-    """Create a lab parameter trend plot with cohort panels and outlier indicators."""
+    """Create a lab parameter trend plot with 4 cohort panels matching the reference template."""
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
+    from matplotlib.lines import Line2D
 
     tdf = lab[(lab['LBTEST'] == test_name) & lab['RESULT'].notna()].copy()
     if len(tdf) == 0:
@@ -269,59 +366,72 @@ def make_lab_trend_plot(lab, test_name, fig_num):
     uln_val = tdf['ULN'].dropna().median() if len(tdf['ULN'].dropna()) > 0 else None
     lln_val = tdf['LLN'].dropna().median() if len(tdf['LLN'].dropna()) > 0 else None
 
-    cohort_list = ['A1', 'A2', 'A3', 'B1']
-    # Use shared color palettes within cohorts
-    cohort_palettes = {
-        'A1': ['#1e40af', '#3b82f6', '#60a5fa', '#93c5fd'],
-        'A2': ['#166534', '#22c55e', '#4ade80', '#86efac'],
-        'A3': ['#92400e', '#d97706', '#f59e0b', '#fbbf24', '#fcd34d',
-               '#c2410c', '#ea580c', '#fb923c', '#fdba74', '#fed7aa'],
-        'B1': ['#991b1b', '#ef4444'],
-    }
+    # Build week-to-x-index mapping for LAB visits
+    week_to_x = {w: i for i, w in enumerate(LAB_VISIT_WEEKS)}
 
-    fig, axes = plt.subplots(1, 4, figsize=(16, 4), sharey=True)
-    fig.suptitle(f'Figure {fig_num} \u2014 {test_name} ({unit}): Trend Plot with Outlier Indicators',
-                 fontsize=11, fontweight='bold', y=1.02)
+    cohort_list = ['A1', 'A2', 'A3', 'B1']
+    fig, axes = plt.subplots(1, 4, figsize=(18, 5.5), sharey=True)
+    fig.suptitle(f'{test_name}  ({unit})', fontsize=13, fontweight='bold', y=1.01)
 
     for idx, coh in enumerate(cohort_list):
         ax = axes[idx]
         coh_data = tdf[tdf['Cohort'] == coh]
         subjects = sorted(coh_data['SUBJID'].unique())
-        palette = cohort_palettes[coh]
 
-        for si, subj in enumerate(subjects):
+        legend_handles = []
+
+        for subj in subjects:
             sdf = coh_data[coh_data['SUBJID'] == subj].sort_values('Week')
-            color = palette[si % len(palette)]
-            ax.plot(sdf['Week'], sdf['RESULT'], '-', color=color, alpha=0.7, linewidth=1,
-                    label=subj)
+            color = SUBJ_COLOR.get(subj, '#999999')
 
-            # Outlier indicators
-            if uln_val is not None:
-                high = sdf[sdf['RESULT'] > uln_val]
-                if len(high) > 0:
-                    ax.scatter(high['Week'], high['RESULT'], c='red', s=20, zorder=5,
-                               marker='o', edgecolors='darkred', linewidth=0.5)
-            if lln_val is not None:
-                low = sdf[sdf['RESULT'] < lln_val]
-                if len(low) > 0:
-                    ax.scatter(low['Week'], low['RESULT'], c='#3b82f6', s=20, zorder=5,
-                               marker='o', edgecolors='#1e40af', linewidth=0.5)
+            # Map weeks to x-indices (find nearest defined visit)
+            x_indices = []
+            results = []
+            weeks_used = []
+            for _, row in sdf.iterrows():
+                w = row['Week']
+                # Find nearest visit week
+                best_x = None
+                best_dist = float('inf')
+                for vw, xi in week_to_x.items():
+                    d = abs(w - vw)
+                    if d < best_dist:
+                        best_dist = d
+                        best_x = xi
+                if best_x is not None:
+                    x_indices.append(best_x)
+                    results.append(row['RESULT'])
+                    weeks_used.append(w)
 
-        # Reference range lines
-        if uln_val is not None:
-            ax.axhline(y=uln_val, color='#f97316', linestyle='--', linewidth=1, alpha=0.7)
-        if lln_val is not None:
-            ax.axhline(y=lln_val, color='#3b82f6', linestyle='--', linewidth=1, alpha=0.7)
+            if not x_indices:
+                continue
 
-        ax.set_title(f'Cohort {coh} (N={len(subjects)})', fontsize=9, fontweight='600')
-        ax.set_xlabel('Study Week', fontsize=8)
+            # Plot line
+            handle, = ax.plot(x_indices, results, '-o', color=color, alpha=0.8,
+                              linewidth=1, markersize=2, markerfacecolor='grey',
+                              markeredgecolor='grey', label=subj)
+            legend_handles.append(handle)
+
+            # Outlier markers
+            for xi, val in zip(x_indices, results):
+                if uln_val is not None and val > uln_val:
+                    ax.scatter([xi], [val], c='red', s=30, zorder=5,
+                               marker='^', edgecolors='darkred', linewidth=0.5)
+                elif lln_val is not None and val < lln_val:
+                    ax.scatter([xi], [val], c='#3b82f6', s=30, zorder=5,
+                               marker='v', edgecolors='#1e40af', linewidth=0.5)
+
+        # Panel styling
+        _setup_cohort_panel(ax, coh, len(subjects), LAB_VISIT_WEEKS,
+                            LAB_VISIT_LABELS, uln_val, lln_val)
         if idx == 0:
-            ax.set_ylabel(f'{test_name} ({unit})', fontsize=8)
+            ax.set_ylabel('Original Results', fontsize=9)
         ax.tick_params(labelsize=7)
-        ax.grid(True, alpha=0.15)
-        if len(subjects) <= 6:
-            ax.legend(fontsize=6, loc='best', framealpha=0.8)
 
+        # Per-panel legend
+        _build_panel_legend(ax, legend_handles)
+
+    _add_bottom_indicator_legend(fig)
     plt.tight_layout()
     b64 = fig_to_base64(fig)
     plt.close(fig)
@@ -380,79 +490,73 @@ def make_edish_plot(lab, xtest, ylabel_prefix):
 
 
 def make_ecg_trend_plot(param_name, fig_num, data_cut_date):
-    """Create an ECG parameter trend plot with cohort panels and outlier indicators (synthetic data)."""
+    """Create an ECG parameter trend plot with 4 cohort panels matching the reference template."""
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
+    from matplotlib.lines import Line2D
 
-    # Find the parameter definition
-    param_def = None
-    for p in ECG_PARAMS:
-        if p[0] == param_name:
-            param_def = p
-            break
-    if param_def is None:
+    if param_name not in ECG_PARAM_SPECS:
         return None
 
-    name, unit, lln_val, uln_val, baseline_mean, trend, noise = param_def
+    unit, lln_val, uln_val, baseline_mean, trend, noise = ECG_PARAM_SPECS[param_name]
+
+    # Build week-to-x-index mapping for ECG visits
+    week_to_x = {w: i for i, w in enumerate(ECG_VISIT_WEEKS)}
 
     cohort_list = ['A1', 'A2', 'A3', 'B1']
-    cohort_palettes = {
-        'A1': ['#1e40af', '#3b82f6', '#60a5fa', '#93c5fd'],
-        'A2': ['#166534', '#22c55e', '#4ade80', '#86efac'],
-        'A3': ['#92400e', '#d97706', '#f59e0b', '#fbbf24', '#fcd34d',
-               '#c2410c', '#ea580c', '#fb923c', '#fdba74', '#fed7aa'],
-        'B1': ['#991b1b', '#ef4444'],
-    }
-
-    fig, axes = plt.subplots(1, 4, figsize=(16, 4), sharey=True)
-    fig.suptitle(f'Figure {fig_num} \u2014 {name} ({unit}): Trend Plot with Outlier Indicators',
-                 fontsize=11, fontweight='bold', y=1.02)
+    fig, axes = plt.subplots(1, 4, figsize=(18, 5.5), sharey=True)
+    fig.suptitle(f'{param_name}  ({unit})', fontsize=13, fontweight='bold', y=1.01)
 
     for idx, coh in enumerate(cohort_list):
         ax = axes[idx]
         subjects = sorted(COHORTS[coh])
-        palette = cohort_palettes[coh]
+        legend_handles = []
 
-        for si, subj in enumerate(subjects):
-            np.random.seed(hash(subj + param_name) % (2**31))
+        for subj in subjects:
+            np.random.seed(stable_seed(f"{subj}{param_name}"))
             dur = TRTDUR.get(subj, 0)
-            visits = [w for w in ECG_VISITS if w <= dur]
+            visits = [w for w in ECG_VISIT_WEEKS if w <= dur]
             if not visits:
                 continue
 
+            color = SUBJ_COLOR.get(subj, '#999999')
+
             # Generate synthetic values
             bl = baseline_mean + np.random.normal(0, noise * 0.5)
+            x_indices = []
             values = []
             for w in visits:
                 val = bl + trend * w + np.random.normal(0, noise)
                 values.append(val)
+                x_indices.append(week_to_x[w])
 
-            color = palette[si % len(palette)]
-            ax.plot(visits, values, '-', color=color, alpha=0.7, linewidth=1, label=subj)
+            # Plot line
+            handle, = ax.plot(x_indices, values, '-o', color=color, alpha=0.8,
+                              linewidth=1, markersize=2, markerfacecolor='grey',
+                              markeredgecolor='grey', label=subj)
+            legend_handles.append(handle)
 
-            # Outlier indicators
-            for wi, val in zip(visits, values):
+            # Outlier markers
+            for xi, val in zip(x_indices, values):
                 if val > uln_val:
-                    ax.scatter([wi], [val], c='red', s=20, zorder=5,
-                               marker='o', edgecolors='darkred', linewidth=0.5)
+                    ax.scatter([xi], [val], c='red', s=30, zorder=5,
+                               marker='^', edgecolors='darkred', linewidth=0.5)
                 elif val < lln_val:
-                    ax.scatter([wi], [val], c='#3b82f6', s=20, zorder=5,
-                               marker='o', edgecolors='#1e40af', linewidth=0.5)
+                    ax.scatter([xi], [val], c='#3b82f6', s=30, zorder=5,
+                               marker='v', edgecolors='#1e40af', linewidth=0.5)
 
-        # Reference range lines
-        ax.axhline(y=uln_val, color='#f97316', linestyle='--', linewidth=1, alpha=0.7)
-        ax.axhline(y=lln_val, color='#3b82f6', linestyle='--', linewidth=1, alpha=0.7)
-
-        ax.set_title(f'Cohort {coh} (N={len(subjects)})', fontsize=9, fontweight='600')
-        ax.set_xlabel('Study Week', fontsize=8)
+        # Panel styling
+        _setup_cohort_panel(ax, coh, len(subjects), ECG_VISIT_WEEKS,
+                            ECG_VISIT_LABELS, uln_val, lln_val)
         if idx == 0:
-            ax.set_ylabel(f'{name} ({unit})', fontsize=8)
+            ax.set_ylabel('Original Results', fontsize=9)
         ax.tick_params(labelsize=7)
-        ax.grid(True, alpha=0.15)
-        if len(subjects) <= 6:
-            ax.legend(fontsize=6, loc='best', framealpha=0.8)
 
+        # Per-panel legend
+        _build_panel_legend(ax, legend_handles)
+
+    _add_bottom_indicator_legend(fig)
     plt.tight_layout()
     b64 = fig_to_base64(fig)
     plt.close(fig)
@@ -460,79 +564,73 @@ def make_ecg_trend_plot(param_name, fig_num, data_cut_date):
 
 
 def make_vs_trend_plot(param_name, fig_num, data_cut_date):
-    """Create a vital signs parameter trend plot with cohort panels and outlier indicators (synthetic data)."""
+    """Create a vital signs parameter trend plot with 4 cohort panels matching the reference template."""
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
+    from matplotlib.lines import Line2D
 
-    # Find the parameter definition
-    param_def = None
-    for p in VS_PARAMS:
-        if p[0] == param_name:
-            param_def = p
-            break
-    if param_def is None:
+    if param_name not in VS_PARAM_SPECS:
         return None
 
-    name, unit, lln_val, uln_val, baseline_mean, noise = param_def
+    unit, lln_val, uln_val, baseline_mean, noise = VS_PARAM_SPECS[param_name]
+
+    # Build week-to-x-index mapping for VS visits
+    week_to_x = {w: i for i, w in enumerate(VS_VISIT_WEEKS)}
 
     cohort_list = ['A1', 'A2', 'A3', 'B1']
-    cohort_palettes = {
-        'A1': ['#1e40af', '#3b82f6', '#60a5fa', '#93c5fd'],
-        'A2': ['#166534', '#22c55e', '#4ade80', '#86efac'],
-        'A3': ['#92400e', '#d97706', '#f59e0b', '#fbbf24', '#fcd34d',
-               '#c2410c', '#ea580c', '#fb923c', '#fdba74', '#fed7aa'],
-        'B1': ['#991b1b', '#ef4444'],
-    }
-
-    fig, axes = plt.subplots(1, 4, figsize=(16, 4), sharey=True)
-    fig.suptitle(f'Figure {fig_num} \u2014 {name} ({unit}): Trend Plot with Outlier Indicators',
-                 fontsize=11, fontweight='bold', y=1.02)
+    fig, axes = plt.subplots(1, 4, figsize=(18, 5.5), sharey=True)
+    fig.suptitle(f'{param_name}  ({unit})', fontsize=13, fontweight='bold', y=1.01)
 
     for idx, coh in enumerate(cohort_list):
         ax = axes[idx]
         subjects = sorted(COHORTS[coh])
-        palette = cohort_palettes[coh]
+        legend_handles = []
 
-        for si, subj in enumerate(subjects):
-            np.random.seed(hash(subj + param_name) % (2**31))
+        for subj in subjects:
+            np.random.seed(stable_seed(f"{subj}{param_name}"))
             dur = TRTDUR.get(subj, 0)
-            visits = [w for w in VS_VISITS if w <= dur]
+            visits = [w for w in VS_VISIT_WEEKS if w <= dur]
             if not visits:
                 continue
 
+            color = SUBJ_COLOR.get(subj, '#999999')
+
             # Generate synthetic values
             bl = baseline_mean + np.random.normal(0, noise * 0.5)
+            x_indices = []
             values = []
             for w in visits:
                 val = bl + np.random.normal(0, noise)
                 values.append(val)
+                x_indices.append(week_to_x[w])
 
-            color = palette[si % len(palette)]
-            ax.plot(visits, values, '-', color=color, alpha=0.7, linewidth=1, label=subj)
+            # Plot line
+            handle, = ax.plot(x_indices, values, '-o', color=color, alpha=0.8,
+                              linewidth=1, markersize=2, markerfacecolor='grey',
+                              markeredgecolor='grey', label=subj)
+            legend_handles.append(handle)
 
-            # Outlier indicators
-            for wi, val in zip(visits, values):
+            # Outlier markers
+            for xi, val in zip(x_indices, values):
                 if val > uln_val:
-                    ax.scatter([wi], [val], c='red', s=20, zorder=5,
-                               marker='o', edgecolors='darkred', linewidth=0.5)
+                    ax.scatter([xi], [val], c='red', s=30, zorder=5,
+                               marker='^', edgecolors='darkred', linewidth=0.5)
                 elif val < lln_val:
-                    ax.scatter([wi], [val], c='#3b82f6', s=20, zorder=5,
-                               marker='o', edgecolors='#1e40af', linewidth=0.5)
+                    ax.scatter([xi], [val], c='#3b82f6', s=30, zorder=5,
+                               marker='v', edgecolors='#1e40af', linewidth=0.5)
 
-        # Reference range lines
-        ax.axhline(y=uln_val, color='#f97316', linestyle='--', linewidth=1, alpha=0.7)
-        ax.axhline(y=lln_val, color='#3b82f6', linestyle='--', linewidth=1, alpha=0.7)
-
-        ax.set_title(f'Cohort {coh} (N={len(subjects)})', fontsize=9, fontweight='600')
-        ax.set_xlabel('Study Week', fontsize=8)
+        # Panel styling
+        _setup_cohort_panel(ax, coh, len(subjects), VS_VISIT_WEEKS,
+                            VS_VISIT_LABELS, uln_val, lln_val)
         if idx == 0:
-            ax.set_ylabel(f'{name} ({unit})', fontsize=8)
+            ax.set_ylabel('Original Results', fontsize=9)
         ax.tick_params(labelsize=7)
-        ax.grid(True, alpha=0.15)
-        if len(subjects) <= 6:
-            ax.legend(fontsize=6, loc='best', framealpha=0.8)
 
+        # Per-panel legend
+        _build_panel_legend(ax, legend_handles)
+
+    _add_bottom_indicator_legend(fig)
     plt.tight_layout()
     b64 = fig_to_base64(fig)
     plt.close(fig)
@@ -864,67 +962,202 @@ def make_exposure_swimlane_plot(data_cut_date):
     return b64
 
 
+def _get_compliance_data(subj, cohort):
+    """Generate synthetic compliance data per subject matching R compliance profile."""
+    np.random.seed(stable_seed(f"{subj}_compliance"))
+    # Build dose schedule weeks
+    dur = TRTDUR.get(subj, 0)
+    interrupted_wks = set(DRUG_INTERRUPTED.get(subj, []))
+    data = []
+    if cohort == 'A1':
+        weeks = [w for w in list(range(1, 3)) + list(range(3, dur + 1, 2)) if w <= dur]
+    elif cohort == 'A2':
+        weeks = [w for w in list(range(1, 3)) + list(range(3, dur + 1, 2)) if w <= dur]
+    elif cohort in ('A3', 'B1'):
+        weeks = [w for w in range(1, dur + 1) if w <= dur]
+    else:
+        weeks = list(range(1, dur + 1))
+
+    for wk in weeks:
+        if wk in interrupted_wks:
+            comp = np.random.uniform(55, 75)
+            compcat = '50-<75%'
+            aeacn = 'Drug interrupted'
+        else:
+            r = np.random.random()
+            if r < 0.02:
+                comp = np.random.uniform(30, 50)
+                compcat = '<50%'
+            elif r < 0.05:
+                comp = np.random.uniform(50, 75)
+                compcat = '50-<75%'
+            elif r < 0.10:
+                comp = np.random.uniform(75, 90)
+                compcat = '75-<90%'
+            else:
+                comp = np.random.uniform(90, 103)
+                compcat = '90-100%' if comp <= 100 else '>100%'
+            aeacn = 'Dose not changed'
+        data.append({'wk': wk, 'comp': comp, 'compcat': compcat, 'aeacn': aeacn})
+    return data
+
+# Compliance category colors (matching R template)
+COMPCAT_COLORS = {
+    '<50%':               '#E41A1C',
+    '50-<75%':            '#377EB8',
+    '75-<90%':            '#00CED1',
+    '90-100%':            '#4DAF4A',
+    '>100%':              '#984EA3',
+    'Missing Dose Entry': '#AAAAAA',
+}
+
+IRR_LINESTYLES = {
+    'Mild':     'dotted',
+    'Moderate': 'dashdot',
+    'Severe':   'solid',
+}
+
+
 def make_compliance_profile_plot(prod, data_cut_date):
-    """Create individual participant dose compliance profiles."""
+    """Create individual participant dose compliance profiles with IRR events and drug interruptions."""
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
+    import matplotlib.lines as mlines
 
-    subjects = []
-    for coh in ['A1', 'A2', 'A3', 'B1']:
-        for s in COHORTS[coh]:
-            subjects.append((coh, s))
+    all_subjs = [(s, c) for c in ['A1', 'A2', 'A3', 'B1'] for s in COHORTS[c]]
+    pair_pages = []
 
-    n_subj = len(subjects)
-    n_cols = 4
-    n_rows = (n_subj + n_cols - 1) // n_cols
+    # Generate pair plots (2 subjects per page, matching reference template)
+    for i in range(0, len(all_subjs), 2):
+        pair = all_subjs[i:i + 2]
+        fig, axes = plt.subplots(2, 1, figsize=(14, 9), gridspec_kw={'hspace': 0.55})
 
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(16, n_rows * 2.5), squeeze=False)
-    fig.suptitle(f'Figure 4.2 \u2014 Individual Participant Profiles: Derived Weekly Dose Compliance',
-                 fontsize=12, fontweight='bold', y=1.01)
+        for j, (subj, coh) in enumerate(pair):
+            ax = axes[j]
+            data = _get_compliance_data(subj, coh)
+            wks = [d['wk'] for d in data]
+            comps = [d['comp'] for d in data]
 
-    for idx, (coh, subj) in enumerate(subjects):
-        row = idx // n_cols
-        col = idx % n_cols
-        ax = axes[row][col]
+            # Plot compliance line
+            ax.plot(wks, comps, color='#555555', linewidth=1.2, zorder=2)
 
-        sdf = prod[prod['PATID'] == subj].copy()
-        dose_visits = sdf[sdf['VISNAM'].str.startswith('Week', na=False)].copy()
+            # Plot dots with compliance-category colors and drug-interrupted markers
+            for d in data:
+                mk = '^' if d['aeacn'] == 'Drug interrupted' else 'o'
+                sz = 80 if mk == '^' else 50
+                ax.scatter(d['wk'], d['comp'], color=COMPCAT_COLORS[d['compcat']],
+                           marker=mk, s=sz, zorder=4, edgecolors='white', linewidth=0.3)
 
-        if len(dose_visits) > 0:
-            dose_visits['WeekNum'] = dose_visits['VISNAM'].str.replace('Week ', '').apply(
-                lambda x: int(x) if x.isdigit() else None)
-            dose_visits = dose_visits[dose_visits['WeekNum'].notna()].sort_values('WeekNum')
+            # IRR vertical lines with severity linestyle
+            for (wk, sev) in IRR_EVENTS.get(subj, []):
+                ax.axvline(x=wk, color='#ffb000', linewidth=2,
+                           linestyle=IRR_LINESTYLES.get(sev, 'dotted'), zorder=3, alpha=0.8)
 
-            weeks = dose_visits['WeekNum'].values
-            # Simulate compliance bars (100% for doses received, gap for missed)
-            compliance = np.ones(len(weeks)) * 100
-            colors = ['#166534' if c >= 90 else '#d97706' if c >= 75 else '#ea580c' if c >= 50 else '#dc2626'
-                      for c in compliance]
-            ax.bar(weeks, compliance, width=0.8, color=colors, alpha=0.8)
-        else:
-            ax.text(0.5, 0.5, 'No dose visit data', transform=ax.transAxes,
-                    ha='center', va='center', fontsize=8, color='#6b7280')
+            # Formatting
+            max_comp = max(comps) if comps else 100
+            ax.set_ylim(-5, max(max_comp + 10, 110))
+            ax.set_yticks(range(0, int(max(max_comp + 15, 110)), 25))
+            if wks:
+                ax.set_xlim(min(wks) - 1, max(wks) + 1)
+                tick_wks = wks[::2] if len(wks) > 10 else wks
+                ax.set_xticks(tick_wks)
+                ax.set_xticklabels([str(w) for w in tick_wks], fontsize=8, rotation=45)
+            ax.set_xlabel('Treatment Week', fontsize=10, fontweight='bold')
+            ax.set_ylabel('Dose Compliance %', fontsize=10, fontweight='bold')
+            ax.set_title(f'Cohort {coh}  —  {subj}', fontsize=11, fontweight='bold')
+            ax.grid(axis='y', linestyle='--', alpha=0.3)
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.set_facecolor('#fafafa')
 
-        ax.set_title(f'{subj} ({coh})', fontsize=8, fontweight='600')
-        ax.set_ylim(0, 110)
-        ax.set_xlabel('Week', fontsize=7)
+        # Build comprehensive legend
+        comp_patches = [mpatches.Patch(color=v, label=k) for k, v in COMPCAT_COLORS.items()
+                        if k != 'Missing Dose Entry']
+        shape_handles = [
+            mlines.Line2D([], [], color='gray', marker='o', linestyle='None',
+                          markersize=8, label='Dose not changed'),
+            mlines.Line2D([], [], color='gray', marker='^', linestyle='None',
+                          markersize=8, label='Drug interrupted'),
+        ]
+        irr_handles = [
+            mlines.Line2D([], [], color='#ffb000', linestyle='dotted', lw=2, label='IRR: Mild'),
+            mlines.Line2D([], [], color='#ffb000', linestyle='dashdot', lw=2, label='IRR: Moderate'),
+            mlines.Line2D([], [], color='#ffb000', linestyle='solid', lw=2, label='IRR: Severe'),
+        ]
+        axes[-1].legend(handles=comp_patches + shape_handles + irr_handles,
+                        loc='lower center', bbox_to_anchor=(0.5, -0.48),
+                        ncol=4, fontsize=8, title='Legend', title_fontsize=9,
+                        frameon=True, fancybox=True, edgecolor='#d1d5db')
+
+        plt.tight_layout()
+        pair_pages.append(fig_to_base64(fig))
+        plt.close(fig)
+
+    # Also generate a combined overview grid (all 20 subjects in 5x4)
+    fig_grid, axes_grid = plt.subplots(5, 4, figsize=(18, 14), squeeze=False)
+    fig_grid.suptitle(
+        f'Figure 4.2 — Individual Participant Profiles: Derived Weekly Dose Compliance,\n'
+        f'IRR Adverse Events by Severity, and Action Taken  (Data Cut: {data_cut_date})',
+        fontsize=12, fontweight='bold', y=0.99)
+
+    for idx, (subj, coh) in enumerate(all_subjs):
+        row = idx // 4
+        col = idx % 4
+        ax = axes_grid[row][col]
+        data = _get_compliance_data(subj, coh)
+        wks = [d['wk'] for d in data]
+        comps = [d['comp'] for d in data]
+
+        ax.plot(wks, comps, color='#555555', linewidth=0.8, zorder=2)
+        for d in data:
+            mk = '^' if d['aeacn'] == 'Drug interrupted' else 'o'
+            sz = 40 if mk == '^' else 25
+            ax.scatter(d['wk'], d['comp'], color=COMPCAT_COLORS[d['compcat']],
+                       marker=mk, s=sz, zorder=4, edgecolors='white', linewidth=0.2)
+
+        for (wk, sev) in IRR_EVENTS.get(subj, []):
+            ax.axvline(x=wk, color='#ffb000', linewidth=1.5,
+                       linestyle=IRR_LINESTYLES.get(sev, 'dotted'), zorder=3, alpha=0.8)
+
+        ax.set_title(f'Cohort {coh}  —  {subj}', fontsize=8, fontweight='600')
+        ax.set_ylim(-5, 115)
+        ax.set_xlabel('Treatment Week', fontsize=6)
         if col == 0:
-            ax.set_ylabel('Compliance %', fontsize=7)
-        ax.tick_params(labelsize=6)
-        ax.axhline(y=90, color='#166534', linestyle='--', linewidth=0.5, alpha=0.5)
-        ax.grid(True, axis='y', alpha=0.15)
+            ax.set_ylabel('Dose Compliance %', fontsize=6)
+        ax.tick_params(labelsize=5)
+        ax.grid(axis='y', linestyle='--', alpha=0.2)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.set_facecolor('#fafafa')
 
     # Hide empty subplots
-    for idx in range(n_subj, n_rows * n_cols):
-        row = idx // n_cols
-        col = idx % n_cols
-        axes[row][col].set_visible(False)
+    for idx in range(len(all_subjs), 5 * 4):
+        axes_grid[idx // 4][idx % 4].set_visible(False)
 
-    plt.tight_layout()
-    b64 = fig_to_base64(fig)
-    plt.close(fig)
-    return b64
+    # Grid legend
+    comp_patches = [mpatches.Patch(color=v, label=k) for k, v in COMPCAT_COLORS.items()
+                    if k != 'Missing Dose Entry']
+    shape_handles = [
+        mlines.Line2D([], [], color='gray', marker='o', linestyle='None', ms=6, label='Dose not changed'),
+        mlines.Line2D([], [], color='gray', marker='^', linestyle='None', ms=6, label='Drug interrupted'),
+    ]
+    irr_handles = [
+        mlines.Line2D([], [], color='#ffb000', linestyle='dotted', lw=2, label='IRR: Mild'),
+        mlines.Line2D([], [], color='#ffb000', linestyle='dashdot', lw=2, label='IRR: Moderate'),
+        mlines.Line2D([], [], color='#ffb000', linestyle='solid', lw=2, label='IRR: Severe'),
+    ]
+    fig_grid.legend(handles=comp_patches + shape_handles + irr_handles,
+                    loc='lower center', bbox_to_anchor=(0.5, 0.01),
+                    ncol=5, fontsize=7, title='Legend', title_fontsize=8,
+                    frameon=True, fancybox=True, edgecolor='#d1d5db')
+
+    plt.tight_layout(rect=[0, 0.04, 1, 0.97])
+    grid_b64 = fig_to_base64(fig_grid)
+    plt.close(fig_grid)
+
+    return grid_b64, pair_pages
 
 
 # ── Delta / Data Changes ─────────────────────────────────────────────────
@@ -1159,7 +1392,7 @@ def generate_report(month):
     exposure_b64 = make_exposure_swimlane_plot(data_cut_date)
 
     print("  Generating compliance profile plot...")
-    compliance_b64 = make_compliance_profile_plot(prod, data_cut_date)
+    compliance_b64, compliance_pair_pages = make_compliance_profile_plot(prod, data_cut_date)
 
     print("  Generating eDISH plots...")
     alt_b64, alt_hys, alt_n = make_edish_plot(lab, 'ALT/SGPT', 'ALT')
@@ -1382,8 +1615,14 @@ def generate_report(month):
 <div class="section">
 <h2>4 \u00b7 Study Drug Exposure &amp; Immunogenicity</h2>
 <h3>4.1 Study Drug Exposure by Cohort (Cumulative to Data Cut)</h3><figure style="margin:24px 0; text-align:center;"><img alt="Figure 4.1 \u2014 Study Drug Exposure by Cohort (Cumulative to Data Cut: {data_cut_date})" src="data:image/png;base64,{exposure_b64}" style="width:100%; max-width:1400px; border:1px solid #ddd; border-radius:4px;"/><figcaption style="font-size:0.85em; color:#555; margin-top:6px; font-style:italic;">Figure 4.1 \u2014 Study Drug Exposure by Cohort (Cumulative to Data Cut: {data_cut_date}). Horizontal bars = treatment duration; white ticks = individual infusions; \u25bc = IRR event; \u2192 = ongoing at data cut.</figcaption></figure>
-<h3 id="sec4-2-compliance">4.2 Individual Participant Profiles: Drug Exposure, Derived Weekly Dose Compliance</h3>
-<figure style="margin:24px 0; text-align:center;"><img alt="Figure 4.2 \u2014 Individual Participant Profiles: Derived Weekly Dose Compliance" src="data:image/png;base64,{compliance_b64}" style="width:100%; max-width:1400px; border:1px solid #ddd; border-radius:4px;"/><figcaption style="font-size:0.83em; color:#555; margin-top:5px; font-style:italic;">Figure 4.2 \u2014 Individual Participant Profiles: Derived Weekly Dose Compliance. Colors: dark green \u226590%, amber 75\u2013&lt;90%, orange 50\u2013&lt;75%, red &lt;50%.</figcaption></figure>
+<h3 id="sec4-2-compliance">4.2 Individual Participant Profiles: Drug Exposure, Derived Weekly Dose Compliance, IRR Adverse Events and Action Taken</h3>
+<figure style="margin:24px 0; text-align:center;"><img alt="Figure 4.2 \u2014 Individual Participant Profiles: Derived Weekly Dose Compliance, IRR Adverse Events by Severity, and Action Taken" src="data:image/png;base64,{compliance_b64}" style="width:100%; max-width:1400px; border:1px solid #ddd; border-radius:4px;"/><figcaption style="font-size:0.83em; color:#555; margin-top:5px; font-style:italic;">Figure 4.2 \u2014 Individual Participant Profiles: Derived Weekly Dose Compliance, IRR Adverse Events by Severity, and Action Taken (Data Cut: {data_cut_date}). Dot colors: green \u226590%, teal 75\u2013&lt;90%, blue 50\u2013&lt;75%, red &lt;50%, purple &gt;100%. Triangle = drug interrupted. Yellow lines = IRR events (dotted = Mild, dash-dot = Moderate, solid = Severe).</figcaption></figure>
+'''
+    # Add pair-page detail views (2 subjects per page)
+    for pi, page_b64 in enumerate(compliance_pair_pages):
+        html += f'''<figure style="margin:16px 0; text-align:center;"><img alt="Figure 4.2.{pi+1} \u2014 Compliance Detail (Subjects {pi*2+1}\u2013{min(pi*2+2, 20)})" src="data:image/png;base64,{page_b64}" style="width:100%; max-width:1200px; border:1px solid #ddd; border-radius:4px;"/></figure>
+'''
+    html += f'''
 <table>
 <thead>
 <tr><th>Parameter</th><th class="c">Cohort A1<br/>(N=4)</th><th class="c">Cohort A2<br/>(N=4)</th><th class="c">Cohort A3<br/>(N=10)</th><th class="c">Cohort B1<br/>(N=2)</th><th class="c">All<br/>(N=20)</th></tr>

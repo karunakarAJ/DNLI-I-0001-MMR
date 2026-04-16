@@ -298,11 +298,10 @@ def make_edish_plot(lab, xtest, ylabel_prefix):
 
 
 def make_cumulative_accrual_plot(data_cut_date):
-    """Create cumulative enrollment accrual chart by cohort."""
+    """Create dual-panel enrollment figure: bar chart (left) + cumulative accrual (right)."""
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
-    import matplotlib.dates as mdates
     from datetime import datetime as dt
 
     # Hardcoded enrollment dates based on study knowledge
@@ -314,32 +313,72 @@ def make_cumulative_accrual_plot(data_cut_date):
                dt(2025, 9, 17), dt(2025, 9, 24)],
         'B1': [dt(2024, 12, 11), dt(2025, 3, 19)],
     }
+    study_start = dt(2024, 1, 17)
 
-    fig, ax = plt.subplots(figsize=(12, 5))
+    fig = plt.figure(figsize=(14, 5.5))
+    fig.suptitle(f'Figure 1.1 \u2014 Study Enrollment (DNLI-I-0001 | EDC Cut: {data_cut_date})',
+                 fontsize=12, fontweight='bold', color='#1a3a5c', y=0.98)
+
+    # ── Left panel: Bar chart of enrolled participants by cohort ──
+    ax1 = fig.add_subplot(1, 2, 1)
+    cohorts = ['A1', 'A2', 'A3', 'B1']
+    counts = [len(enrollment_dates[c]) for c in cohorts]
+    colors = [COHORT_COLORS[c] for c in cohorts]
+    bars = ax1.bar(cohorts, counts, color=colors, edgecolor='white', linewidth=1.2, width=0.6)
+
+    # Add count labels on top of bars
+    for bar, count in zip(bars, counts):
+        ax1.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.3,
+                 str(count), ha='center', va='bottom', fontsize=13, fontweight='bold',
+                 color='#1a3a5c')
+
+    ax1.set_xlabel('Cohort', fontsize=10, color='#1a3a5c')
+    ax1.set_ylabel('Number of Participants', fontsize=10, color='#1a3a5c')
+    ax1.set_title('Enrolled Participants by Cohort', fontsize=11, fontweight='bold',
+                  color='#1a3a5c', pad=10)
+    ax1.set_ylim(0, max(counts) + 2)
+    ax1.spines['top'].set_visible(False)
+    ax1.spines['right'].set_visible(False)
+    ax1.grid(axis='y', alpha=0.15)
+    ax1.tick_params(colors='#475569')
+
+    # Note below bar chart
+    ax1.text(0.5, -0.18, f'Total Enrolled: N=20 | Data Cut: {data_cut_date}',
+             transform=ax1.transAxes, ha='center', fontsize=9, color='#64748b',
+             style='italic')
+
+    # ── Right panel: Cumulative accrual over time ──
+    ax2 = fig.add_subplot(1, 2, 2)
 
     all_dates = []
-    for coh in ['A1', 'A2', 'A3', 'B1']:
-        dates = sorted(enrollment_dates[coh])
-        cumulative = list(range(1, len(dates) + 1))
-        ax.step(dates, cumulative, where='post', label=f'Cohort {coh}',
-                color=COHORT_COLORS[coh], linewidth=2)
-        all_dates.extend(dates)
-
-    # Total line
+    for coh in cohorts:
+        all_dates.extend(sorted(enrollment_dates[coh]))
     all_sorted = sorted(all_dates)
-    total_cum = list(range(1, len(all_sorted) + 1))
-    ax.step(all_sorted, total_cum, where='post', label='Total', color='#1a3a5c',
-            linewidth=2.5, linestyle='--')
 
-    ax.set_xlabel('Date', fontsize=10)
-    ax.set_ylabel('Cumulative Enrollment', fontsize=10)
-    ax.set_title(f'Figure 1.1 \u2014 Cumulative Accrual Enrollment by Cohort (DNLI-I-0001 | EDC Cut: {data_cut_date})',
-                 fontsize=11, fontweight='bold')
-    ax.legend(fontsize=9, loc='upper left')
-    ax.grid(True, alpha=0.2)
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
-    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
-    fig.autofmt_xdate()
+    # Convert to months since study initiation
+    months = [(d - study_start).days / 30.44 for d in all_sorted]
+    total_cum = list(range(1, len(all_sorted) + 1))
+
+    ax2.step(months, total_cum, where='post', color='#2563eb', linewidth=2.5, zorder=3)
+    ax2.fill_between(months, total_cum, step='post', alpha=0.08, color='#2563eb')
+
+    # Target line
+    ax2.axhline(y=20, color='#dc2626', linestyle='--', linewidth=1.5, alpha=0.7)
+    ax2.text(max(months) + 1, 20, 'Target N=20', va='center', fontsize=9,
+             color='#dc2626', fontweight='bold')
+
+    ax2.set_xlabel('Months since Study Initiation', fontsize=10, color='#1a3a5c')
+    ax2.set_ylabel('Cumulative Enrolled', fontsize=10, color='#1a3a5c')
+    ax2.set_title('Cumulative Accrual', fontsize=11, fontweight='bold',
+                  color='#1a3a5c', pad=10)
+    ax2.set_xlim(0, max(months) + 5)
+    ax2.set_ylim(0, 24)
+    ax2.spines['top'].set_visible(False)
+    ax2.spines['right'].set_visible(False)
+    ax2.grid(True, alpha=0.15)
+    ax2.tick_params(colors='#475569')
+
+    fig.subplots_adjust(wspace=0.35, bottom=0.18, top=0.88)
 
     b64 = fig_to_base64(fig)
     plt.close(fig)

@@ -1,0 +1,36 @@
+{
+  "timestamp": "2026-04-15T22:00:24.615914",
+  "report": "report/I-0001-Medical-Monitoring-Report-2026MAR20-SafetyOnly.html",
+  "models": {
+    "claude": "claude-sonnet-4-20250514",
+    "gpt": "gpt-4o",
+    "consensus": "claude-sonnet-4-20250514"
+  },
+  "agents": {
+    "clinician_gpt": {
+      "provider": "openai",
+      "model": "gpt-4o",
+      "status": "success",
+      "tokens": {
+        "input_tokens": 8032,
+        "output_tokens": 871
+      },
+      "elapsed_seconds": 13.7
+    },
+    "patient_safety_gpt": {
+      "provider": "openai",
+      "model": "gpt-4o",
+      "status": "success",
+      "tokens": {
+        "input_tokens": 8032,
+        "output_tokens": 1032
+      },
+      "elapsed_seconds": 23.7
+    }
+  },
+  "totals": {
+    "input_tokens": 16064,
+    "output_tokens": 1903,
+    "estimated_cost_usd": 0.06
+  }
+}

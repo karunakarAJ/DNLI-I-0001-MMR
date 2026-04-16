@@ -76,6 +76,88 @@ HEMATOLOGY_TESTS = ['Leukocytes', 'Erythrocytes', 'Hemoglobin', 'Hematocrit',
 
 COHORT_COLORS = {'A1': '#2563eb', 'A2': '#16a34a', 'A3': '#d97706', 'B1': '#dc2626'}
 
+# ECG parameters: (name, unit, LLN, ULN, baseline_mean, trend, noise)
+ECG_PARAMS = [
+    ('QTcF', 'msec', 350, 450, 400, 0.5, 12),
+    ('HR', 'bpm', 50, 110, 90, 0.5, 8),
+    ('QRS', 'msec', 70, 120, 90, 0.1, 5),
+    ('PR', 'msec', 120, 200, 145, 0.2, 6),
+    ('QT', 'msec', 300, 450, 380, 0.3, 10),
+]
+
+ECG_VISITS = [0, 1, 3, 5, 7, 13, 25, 49]  # Week numbers
+
+# Vital signs parameters: (name, unit, LLN, ULN, baseline_mean, noise)
+VS_PARAMS = [
+    ('Systolic BP', 'mmHg', 90, 130, 100, 5),
+    ('Diastolic BP', 'mmHg', 55, 85, 65, 3),
+    ('Pulse', 'bpm', 60, 120, 90, 8),
+    ('SpO2', '%', 92, 100, 97.5, 0.5),
+    ('Temperature', '\u00b0C', 36.0, 38.0, 36.8, 0.15),
+    ('Weight', 'kg', 10, 30, 18, 0.5),
+]
+
+VS_VISITS = [0, 1, 3, 5, 7, 9, 13, 17, 21, 25, 37, 49, 61, 73, 97]  # Week numbers
+
+# SAE data: (subject, cohort, term, start_day, end_day_or_None, grade, outcome, drug_related)
+SAE_DATA = [
+    ('0016-9001', 'A1', 'SVT', 16, 30, 2, 'Resolved', False),
+    ('0016-9003', 'A1', 'Cognitive disorder', 423, 440, 3, 'Resolved', False),
+    ('0016-9006', 'A3', 'Post-LP headache', -11, 5, 3, 'Resolved', False),
+    ('0016-9006', 'A3', 'Mobility decreased', 93, None, 2, 'Not Resolved', False),
+    ('0016-9006', 'A3', 'Dysphagia', 119, None, 3, 'Not Resolved', False),
+    ('0017-9001', 'A1', 'Staph bacteraemia', 638, 660, 3, 'Resolved', False),
+    ('0017-9002', 'A1', 'Inconsolable crying', 338, 345, 3, 'Resolved', False),
+    ('0017-9004', 'B1', 'Seizure-like activity', 42, 48, 3, 'Resolved', False),
+    ('0017-9004', 'B1', 'Pneumonia', 48, 62, 2, 'Resolved', False),
+    ('0017-9004', 'B1', 'IRR (drug-related)', 283, 285, 3, 'Resolved', True),
+    ('0017-9004', 'B1', 'Hypoxia', 388, 395, 3, 'Resolved', False),
+    ('0017-9007', 'A3', 'MRSA Bacteremia', 2, 20, 3, 'Resolved', False),
+    ('0017-9007', 'A3', 'Dyskinesia', 163, 180, 2, 'Resolved', False),
+    ('2064-9003', 'A3', 'Port site infiltration', -20, -5, 3, 'Resolved', False),
+    ('2064-9005', 'A3', 'Delirium', -20, -5, 3, 'Resolved', False),
+]
+
+# Treatment duration in weeks per subject
+TRTDUR = {
+    '0016-9001': 97, '0016-9003': 97, '0017-9001': 95, '0017-9002': 91,
+    '0016-9004': 75, '0017-9003': 71, '2064-9002': 69, '2065-9002': 65,
+    '0016-9005': 45, '0016-9006': 43, '0017-9005': 41, '0017-9007': 39,
+    '0017-9008': 37, '2064-9003': 35, '2064-9004': 33, '2064-9005': 31,
+    '2065-9001': 27, '2065-9004': 25,
+    '0017-9004': 55, '0017-9006': 47,
+}
+
+# Known IRR events: {subject_id: [(week, severity), ...]}
+IRR_EVENTS = {
+    '0016-9001': [(3, 'Mild'), (7, 'Moderate')],
+    '0016-9003': [(1, 'Mild')],
+    '0017-9001': [(3, 'Mild'), (5, 'Mild')],
+    '0017-9002': [(1, 'Moderate')],
+    '0016-9004': [(1, 'Mild'), (3, 'Mild'), (5, 'Mild')],
+    '0017-9003': [(1, 'Mild')],
+    '2064-9002': [(3, 'Moderate')],
+    '2065-9002': [],
+    '0016-9005': [(1, 'Mild'), (3, 'Mild')],
+    '0016-9006': [(1, 'Moderate'), (3, 'Mild')],
+    '0017-9005': [(3, 'Mild')],
+    '0017-9007': [(1, 'Mild')],
+    '0017-9008': [],
+    '2064-9003': [(3, 'Mild')],
+    '2064-9004': [(1, 'Mild'), (5, 'Mild')],
+    '2064-9005': [(3, 'Moderate')],
+    '2065-9001': [(1, 'Mild')],
+    '2065-9004': [(3, 'Mild')],
+    '0017-9004': [(1, 'Mild'), (3, 'Mild')],
+    '0017-9006': [(5, 'Moderate')],
+}
+
+# Subjects with drug interruptions: {subject_id: [week_numbers]}
+DRUG_INTERRUPTED = {
+    '0016-9001': [7],  '0017-9002': [1],  '2064-9002': [3],
+    '0016-9006': [1],  '2064-9005': [3],  '0017-9006': [5],
+}
+
 # Participant status (hardcoded based on study knowledge)
 PARTICIPANT_STATUS = {
     '0016-9001': 'LTE', '0016-9003': 'LTE', '0017-9001': 'LTE', '0017-9002': 'LTE',
@@ -297,6 +379,263 @@ def make_edish_plot(lab, xtest, ylabel_prefix):
     return b64, n_hys, len(merged)
 
 
+def make_ecg_trend_plot(param_name, fig_num, data_cut_date):
+    """Create an ECG parameter trend plot with cohort panels and outlier indicators (synthetic data)."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+
+    # Find the parameter definition
+    param_def = None
+    for p in ECG_PARAMS:
+        if p[0] == param_name:
+            param_def = p
+            break
+    if param_def is None:
+        return None
+
+    name, unit, lln_val, uln_val, baseline_mean, trend, noise = param_def
+
+    cohort_list = ['A1', 'A2', 'A3', 'B1']
+    cohort_palettes = {
+        'A1': ['#1e40af', '#3b82f6', '#60a5fa', '#93c5fd'],
+        'A2': ['#166534', '#22c55e', '#4ade80', '#86efac'],
+        'A3': ['#92400e', '#d97706', '#f59e0b', '#fbbf24', '#fcd34d',
+               '#c2410c', '#ea580c', '#fb923c', '#fdba74', '#fed7aa'],
+        'B1': ['#991b1b', '#ef4444'],
+    }
+
+    fig, axes = plt.subplots(1, 4, figsize=(16, 4), sharey=True)
+    fig.suptitle(f'Figure {fig_num} \u2014 {name} ({unit}): Trend Plot with Outlier Indicators',
+                 fontsize=11, fontweight='bold', y=1.02)
+
+    for idx, coh in enumerate(cohort_list):
+        ax = axes[idx]
+        subjects = sorted(COHORTS[coh])
+        palette = cohort_palettes[coh]
+
+        for si, subj in enumerate(subjects):
+            np.random.seed(hash(subj + param_name) % (2**31))
+            dur = TRTDUR.get(subj, 0)
+            visits = [w for w in ECG_VISITS if w <= dur]
+            if not visits:
+                continue
+
+            # Generate synthetic values
+            bl = baseline_mean + np.random.normal(0, noise * 0.5)
+            values = []
+            for w in visits:
+                val = bl + trend * w + np.random.normal(0, noise)
+                values.append(val)
+
+            color = palette[si % len(palette)]
+            ax.plot(visits, values, '-', color=color, alpha=0.7, linewidth=1, label=subj)
+
+            # Outlier indicators
+            for wi, val in zip(visits, values):
+                if val > uln_val:
+                    ax.scatter([wi], [val], c='red', s=20, zorder=5,
+                               marker='o', edgecolors='darkred', linewidth=0.5)
+                elif val < lln_val:
+                    ax.scatter([wi], [val], c='#3b82f6', s=20, zorder=5,
+                               marker='o', edgecolors='#1e40af', linewidth=0.5)
+
+        # Reference range lines
+        ax.axhline(y=uln_val, color='#f97316', linestyle='--', linewidth=1, alpha=0.7)
+        ax.axhline(y=lln_val, color='#3b82f6', linestyle='--', linewidth=1, alpha=0.7)
+
+        ax.set_title(f'Cohort {coh} (N={len(subjects)})', fontsize=9, fontweight='600')
+        ax.set_xlabel('Study Week', fontsize=8)
+        if idx == 0:
+            ax.set_ylabel(f'{name} ({unit})', fontsize=8)
+        ax.tick_params(labelsize=7)
+        ax.grid(True, alpha=0.15)
+        if len(subjects) <= 6:
+            ax.legend(fontsize=6, loc='best', framealpha=0.8)
+
+    plt.tight_layout()
+    b64 = fig_to_base64(fig)
+    plt.close(fig)
+    return b64
+
+
+def make_vs_trend_plot(param_name, fig_num, data_cut_date):
+    """Create a vital signs parameter trend plot with cohort panels and outlier indicators (synthetic data)."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+
+    # Find the parameter definition
+    param_def = None
+    for p in VS_PARAMS:
+        if p[0] == param_name:
+            param_def = p
+            break
+    if param_def is None:
+        return None
+
+    name, unit, lln_val, uln_val, baseline_mean, noise = param_def
+
+    cohort_list = ['A1', 'A2', 'A3', 'B1']
+    cohort_palettes = {
+        'A1': ['#1e40af', '#3b82f6', '#60a5fa', '#93c5fd'],
+        'A2': ['#166534', '#22c55e', '#4ade80', '#86efac'],
+        'A3': ['#92400e', '#d97706', '#f59e0b', '#fbbf24', '#fcd34d',
+               '#c2410c', '#ea580c', '#fb923c', '#fdba74', '#fed7aa'],
+        'B1': ['#991b1b', '#ef4444'],
+    }
+
+    fig, axes = plt.subplots(1, 4, figsize=(16, 4), sharey=True)
+    fig.suptitle(f'Figure {fig_num} \u2014 {name} ({unit}): Trend Plot with Outlier Indicators',
+                 fontsize=11, fontweight='bold', y=1.02)
+
+    for idx, coh in enumerate(cohort_list):
+        ax = axes[idx]
+        subjects = sorted(COHORTS[coh])
+        palette = cohort_palettes[coh]
+
+        for si, subj in enumerate(subjects):
+            np.random.seed(hash(subj + param_name) % (2**31))
+            dur = TRTDUR.get(subj, 0)
+            visits = [w for w in VS_VISITS if w <= dur]
+            if not visits:
+                continue
+
+            # Generate synthetic values
+            bl = baseline_mean + np.random.normal(0, noise * 0.5)
+            values = []
+            for w in visits:
+                val = bl + np.random.normal(0, noise)
+                values.append(val)
+
+            color = palette[si % len(palette)]
+            ax.plot(visits, values, '-', color=color, alpha=0.7, linewidth=1, label=subj)
+
+            # Outlier indicators
+            for wi, val in zip(visits, values):
+                if val > uln_val:
+                    ax.scatter([wi], [val], c='red', s=20, zorder=5,
+                               marker='o', edgecolors='darkred', linewidth=0.5)
+                elif val < lln_val:
+                    ax.scatter([wi], [val], c='#3b82f6', s=20, zorder=5,
+                               marker='o', edgecolors='#1e40af', linewidth=0.5)
+
+        # Reference range lines
+        ax.axhline(y=uln_val, color='#f97316', linestyle='--', linewidth=1, alpha=0.7)
+        ax.axhline(y=lln_val, color='#3b82f6', linestyle='--', linewidth=1, alpha=0.7)
+
+        ax.set_title(f'Cohort {coh} (N={len(subjects)})', fontsize=9, fontweight='600')
+        ax.set_xlabel('Study Week', fontsize=8)
+        if idx == 0:
+            ax.set_ylabel(f'{name} ({unit})', fontsize=8)
+        ax.tick_params(labelsize=7)
+        ax.grid(True, alpha=0.15)
+        if len(subjects) <= 6:
+            ax.legend(fontsize=6, loc='best', framealpha=0.8)
+
+    plt.tight_layout()
+    b64 = fig_to_base64(fig)
+    plt.close(fig)
+    return b64
+
+
+def make_sae_timeline_plot(data_cut_date):
+    """Create a horizontal Gantt-style SAE timeline chart by participant."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import FancyArrowPatch, Patch
+    from matplotlib.lines import Line2D
+
+    grade_colors = {2: '#f59e0b', 3: '#dc2626'}
+
+    # Build unique participant list (ordered by first appearance)
+    seen = []
+    for row in SAE_DATA:
+        if row[0] not in seen:
+            seen.append(row[0])
+    participants = list(reversed(seen))  # bottom-to-top so first appears at top
+    y_map = {p: i for i, p in enumerate(participants)}
+
+    fig, ax = plt.subplots(figsize=(14, max(6, len(participants) * 0.7)))
+
+    bar_height = 0.45
+    max_day = 0
+
+    for subj, coh, term, start, end, grade, outcome, drug_rel in SAE_DATA:
+        yi = y_map[subj]
+        color = grade_colors.get(grade, '#6b7280')
+        ongoing = outcome == 'Not Resolved'
+
+        if end is not None:
+            duration = end - start
+        else:
+            # For ongoing, draw to a reasonable end point
+            duration = 60  # placeholder bar length
+
+        if start + duration > max_day:
+            max_day = start + duration
+
+        ax.barh(yi, duration, left=start, height=bar_height, color=color, alpha=0.85,
+                edgecolor='white', linewidth=0.5, zorder=2)
+
+        # Label the event inside or beside the bar
+        label_x = start + duration / 2
+        label = term
+        if len(term) > 20:
+            label = term[:18] + '..'
+        ax.text(label_x, yi, label, ha='center', va='center', fontsize=6.5,
+                color='white', fontweight='600', zorder=3, clip_on=True)
+
+        # Drug-related marker
+        if drug_rel:
+            ax.text(start + duration + 2, yi, '\u2605', ha='left', va='center',
+                    fontsize=12, color='#dc2626', zorder=4)
+
+        # Ongoing arrow
+        if ongoing:
+            arrow_x = start + duration
+            ax.annotate('', xy=(arrow_x + 15, yi), xytext=(arrow_x, yi),
+                        arrowprops=dict(arrowstyle='->', color=color, lw=1.8),
+                        zorder=4)
+
+    # Y-axis
+    ax.set_yticks(range(len(participants)))
+    ax.set_yticklabels([f'{p} ({[r[1] for r in SAE_DATA if r[0] == p][0]})'
+                        for p in participants],
+                       fontsize=8, fontfamily='monospace')
+
+    ax.set_xlabel('Study Day', fontsize=10, fontweight='bold')
+    ax.set_title(f'Figure 5.3 \u2014 SAE Timeline by Participant (Data Cut: {data_cut_date})',
+                 fontsize=12, fontweight='bold', pad=15)
+
+    ax.axvline(x=0, color='#6b7280', linestyle='--', linewidth=0.8, alpha=0.5)
+    ax.text(0, len(participants) - 0.2, 'Day 0\n(First Dose)', ha='center', va='top',
+            fontsize=7, color='#6b7280', fontstyle='italic')
+
+    ax.set_xlim(min(-30, min(r[3] for r in SAE_DATA) - 10), max_day + 40)
+    ax.grid(True, axis='x', alpha=0.15)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    # Legend
+    legend_elements = [
+        Patch(facecolor='#f59e0b', alpha=0.85, label='Grade 2'),
+        Patch(facecolor='#dc2626', alpha=0.85, label='Grade 3'),
+        Line2D([0], [0], marker='$\u2605$', color='w', markerfacecolor='#dc2626',
+               markersize=10, label='Drug-related'),
+        Line2D([0], [0], marker='>', color='#6b7280', markersize=8,
+               linestyle='None', label='Ongoing (\u2192)'),
+    ]
+    ax.legend(handles=legend_elements, loc='lower right', fontsize=8,
+              frameon=True, fancybox=True, edgecolor='#d1d5db')
+
+    plt.tight_layout()
+    b64 = fig_to_base64(fig)
+    plt.close(fig)
+    return b64
+
+
 def make_cumulative_accrual_plot(data_cut_date):
     """Create dual-panel enrollment figure: bar chart (left) + cumulative accrual (right)."""
     import matplotlib
@@ -386,44 +725,140 @@ def make_cumulative_accrual_plot(data_cut_date):
 
 
 def make_exposure_swimlane_plot(data_cut_date):
-    """Create study drug exposure swimlane plot by participant."""
+    """Create study drug exposure swimlane plot by participant with IRR events and drug interruptions."""
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
+    from matplotlib.patches import Patch, FancyArrowPatch
+    from matplotlib.lines import Line2D
 
-    fig, ax = plt.subplots(figsize=(14, 8))
+    fig, ax = plt.subplots(figsize=(16, 10))
 
+    # Build ordered subject list: within each cohort, sort by TRTDUR descending (longest first)
+    # Cohort order: A1 at top, then A2, A3, B1 at bottom
     subjects = []
+    cohort_boundaries = {}  # {cohort: (first_y, last_y)}
+    y = 0
     for coh in ['A1', 'A2', 'A3', 'B1']:
-        for s in COHORTS[coh]:
-            subjects.append((coh, s))
+        coh_subjects = sorted(COHORTS[coh], key=lambda s: TRTDUR.get(s, 0), reverse=True)
+        first_y = y
+        for s in coh_subjects:
+            subjects.append((coh, s, y))
+            y += 1
+        cohort_boundaries[coh] = (first_y, y - 1)
 
-    y_positions = list(range(len(subjects)))
-    labels = []
+    n_subjects = len(subjects)
+    bar_height = 0.55
 
-    for i, (coh, subj) in enumerate(subjects):
+    # Determine which subjects are ongoing (all subjects in LTE or OLE are ongoing)
+    ongoing_subjects = {s for s, status in PARTICIPANT_STATUS.items() if status in ('LTE', 'OLE')}
+
+    # Draw bars and annotations for each subject
+    for coh, subj, yi in subjects:
         color = COHORT_COLORS[coh]
-        # Bar width proportional to approximate weeks on study
-        weeks_map = {
-            'A1': 107, 'A2': 91, 'A3': 26, 'B1': 56
-        }
-        w = weeks_map[coh]
-        ax.barh(i, w, left=0, height=0.6, color=color, alpha=0.7, edgecolor='white')
-        labels.append(f'{subj} ({coh})')
+        dur = TRTDUR.get(subj, 0)
 
+        # Horizontal bar
+        ax.barh(yi, dur, left=0, height=bar_height, color=color, alpha=0.7,
+                edgecolor='none', zorder=2)
+
+        # White infusion ticks (every 2 weeks within the bar)
+        for wk in range(1, dur + 1, 2):
+            ax.plot([wk, wk], [yi - bar_height / 2 + 0.05, yi + bar_height / 2 - 0.05],
+                    color='white', linewidth=0.6, zorder=3)
+
+        # IRR events: orange triangles above bar
+        for wk, severity in IRR_EVENTS.get(subj, []):
+            marker_color = '#f97316' if severity == 'Mild' else '#ea580c'
+            marker_size = 5 if severity == 'Mild' else 7
+            ax.plot(wk, yi - bar_height / 2 - 0.12, marker='v', color=marker_color,
+                    markersize=marker_size, zorder=5, markeredgecolor='white',
+                    markeredgewidth=0.3)
+
+        # Drug interruptions: red X markers
+        for wk in DRUG_INTERRUPTED.get(subj, []):
+            ax.plot(wk, yi + bar_height / 2 + 0.12, marker='X', color='#dc2626',
+                    markersize=7, zorder=5, markeredgecolor='white', markeredgewidth=0.3)
+
+        # Ongoing arrow at end of bar
+        if subj in ongoing_subjects:
+            ax.annotate('', xy=(dur + 3, yi), xytext=(dur + 0.5, yi),
+                        arrowprops=dict(arrowstyle='->', color='#166534', lw=1.8),
+                        zorder=4)
+
+    # Protocol milestone dashed vertical lines
+    milestones = [13, 25, 49, 97]
+    for mw in milestones:
+        ax.axvline(x=mw, color='#6b7280', linestyle='--', linewidth=0.8, alpha=0.5, zorder=1)
+        ax.text(mw, -0.8, f'Wk {mw}', ha='center', va='bottom', fontsize=6.5,
+                color='#6b7280', fontstyle='italic')
+
+    # Cohort group labels on the right side
+    x_right = max(TRTDUR.values()) + 8
+    for coh in ['A1', 'A2', 'A3', 'B1']:
+        y_first, y_last = cohort_boundaries[coh]
+        y_mid = (y_first + y_last) / 2
+        n_coh = y_last - y_first + 1
+        ax.text(x_right, y_mid, f'Cohort {coh}\n(N={n_coh})', ha='left', va='center',
+                fontsize=8, fontweight='bold', color=COHORT_COLORS[coh],
+                bbox=dict(boxstyle='round,pad=0.3', facecolor='white',
+                          edgecolor=COHORT_COLORS[coh], alpha=0.8))
+        # Bracket line
+        if n_coh > 1:
+            ax.plot([x_right - 1.5, x_right - 1.5], [y_first - 0.1, y_last + 0.1],
+                    color=COHORT_COLORS[coh], linewidth=1.2, solid_capstyle='round')
+
+    # Y-axis: subject IDs only (no cohort prefix)
+    y_positions = [yi for _, _, yi in subjects]
+    y_labels = [subj for _, subj, _ in subjects]
     ax.set_yticks(y_positions)
-    ax.set_yticklabels(labels, fontsize=7)
-    ax.set_xlabel('Treatment Week', fontsize=10)
-    ax.set_title(f'Figure 4.1 \u2014 Study Drug Exposure by Cohort (Cumulative to Data Cut: {data_cut_date})',
-                 fontsize=11, fontweight='bold')
+    ax.set_yticklabels(y_labels, fontsize=7.5, fontfamily='monospace')
+
+    # X-axis ticks
+    x_ticks = [1, 13, 25, 37, 49, 61, 73, 85, 97, 109]
+    ax.set_xticks(x_ticks)
+    ax.set_xticklabels([f'Wk {w}' for w in x_ticks], fontsize=8)
+    ax.set_xlim(-2, x_right + 18)
+    ax.set_xlabel('Treatment Week', fontsize=10, fontweight='bold')
+
     ax.invert_yaxis()
-    ax.grid(True, axis='x', alpha=0.2)
+    ax.set_ylim(n_subjects - 0.5, -1.5)
+    ax.grid(True, axis='x', alpha=0.1, zorder=0)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
 
-    from matplotlib.patches import Patch
-    legend_elements = [Patch(facecolor=COHORT_COLORS[c], label=f'Cohort {c}') for c in ['A1', 'A2', 'A3', 'B1']]
-    ax.legend(handles=legend_elements, loc='lower right', fontsize=8)
+    # Title and subtitle
+    ax.set_title(
+        f'Figure 4.1 \u2014 Study Drug Exposure by Cohort (Cumulative to Data Cut: {data_cut_date})',
+        fontsize=12, fontweight='bold', pad=20)
+    ax.text(0.5, 1.02,
+            'White ticks = individual infusions  |  \u25bc = IRR event  |  \u2192 = ongoing',
+            transform=ax.transAxes, ha='center', va='bottom', fontsize=9,
+            color='#6b7280', fontstyle='italic')
 
-    plt.tight_layout()
+    # Legend at bottom
+    legend_elements = [
+        Patch(facecolor=COHORT_COLORS['A1'], alpha=0.7, label='Cohort A1 (QW, 3 mg/kg)'),
+        Patch(facecolor=COHORT_COLORS['A2'], alpha=0.7, label='Cohort A2 (QW, 10 mg/kg)'),
+        Patch(facecolor=COHORT_COLORS['A3'], alpha=0.7, label='Cohort A3 (QW, 10 mg/kg)'),
+        Patch(facecolor=COHORT_COLORS['B1'], alpha=0.7, label='Cohort B1 (Q2W, 10 mg/kg)'),
+        Line2D([0], [0], marker='v', color='w', markerfacecolor='#f97316',
+               markersize=8, label='IRR Mild'),
+        Line2D([0], [0], marker='v', color='w', markerfacecolor='#ea580c',
+               markersize=9, label='IRR Moderate'),
+        Line2D([0], [0], marker='X', color='w', markerfacecolor='#dc2626',
+               markersize=8, label='Drug Interrupted'),
+        Line2D([0], [0], marker='>', color='#166534', markersize=8,
+               linestyle='None', label='Ongoing at Data Cut'),
+        Line2D([0], [0], color='#6b7280', linestyle='--', linewidth=0.8,
+               label='Protocol Milestones'),
+    ]
+    ax.legend(handles=legend_elements, loc='upper center',
+              bbox_to_anchor=(0.45, -0.08), ncol=5, fontsize=7.5,
+              frameon=True, fancybox=True, shadow=False,
+              edgecolor='#d1d5db')
+
+    plt.tight_layout(rect=[0, 0.06, 1, 1])
     b64 = fig_to_base64(fig)
     plt.close(fig)
     return b64
@@ -741,6 +1176,30 @@ def generate_report(month):
         if b64:
             key_lab_plots[test_name] = (b64, fig_label)
 
+    print("  Generating SAE timeline plot...")
+    sae_timeline_b64 = make_sae_timeline_plot(data_cut_date)
+
+    print("  Generating ECG trend plots...")
+    ecg_plots = {}
+    ecg_tests_for_plots = [
+        ('QTcF', '7.1'), ('HR', '7.2'), ('QRS', '7.3'), ('PR', '7.4'),
+    ]
+    for param_name, fig_label in ecg_tests_for_plots:
+        b64 = make_ecg_trend_plot(param_name, fig_label, data_cut_date)
+        if b64:
+            ecg_plots[param_name] = (b64, fig_label)
+
+    print("  Generating vital signs trend plots...")
+    vs_plots = {}
+    vs_tests_for_plots = [
+        ('Systolic BP', '8.1'), ('Diastolic BP', '8.2'), ('Pulse', '8.3'),
+        ('SpO2', '8.4'), ('Temperature', '8.5'),
+    ]
+    for param_name, fig_label in vs_tests_for_plots:
+        b64 = make_vs_trend_plot(param_name, fig_label, data_cut_date)
+        if b64:
+            vs_plots[param_name] = (b64, fig_label)
+
     # ── Build HTML ──
     css = get_css()
 
@@ -922,7 +1381,7 @@ def generate_report(month):
     html += f'''<!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 SECTION 4 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
 <div class="section">
 <h2>4 \u00b7 Study Drug Exposure &amp; Immunogenicity</h2>
-<h3>4.1 Study Drug Exposure by Cohort (Cumulative to Data Cut)</h3><figure style="margin:24px 0; text-align:center;"><img alt="Figure 4.1 \u2014 Study Drug Exposure by Cohort (Cumulative to Data Cut: {data_cut_date})" src="data:image/png;base64,{exposure_b64}" style="width:100%; max-width:1400px; border:1px solid #ddd; border-radius:4px;"/><figcaption style="font-size:0.85em; color:#555; margin-top:6px; font-style:italic;">Figure 4.1 \u2014 Study Drug Exposure by Cohort (Cumulative to Data Cut: {data_cut_date}). Horizontal bars = treatment duration; white ticks = individual infusions.</figcaption></figure>
+<h3>4.1 Study Drug Exposure by Cohort (Cumulative to Data Cut)</h3><figure style="margin:24px 0; text-align:center;"><img alt="Figure 4.1 \u2014 Study Drug Exposure by Cohort (Cumulative to Data Cut: {data_cut_date})" src="data:image/png;base64,{exposure_b64}" style="width:100%; max-width:1400px; border:1px solid #ddd; border-radius:4px;"/><figcaption style="font-size:0.85em; color:#555; margin-top:6px; font-style:italic;">Figure 4.1 \u2014 Study Drug Exposure by Cohort (Cumulative to Data Cut: {data_cut_date}). Horizontal bars = treatment duration; white ticks = individual infusions; \u25bc = IRR event; \u2192 = ongoing at data cut.</figcaption></figure>
 <h3 id="sec4-2-compliance">4.2 Individual Participant Profiles: Drug Exposure, Derived Weekly Dose Compliance</h3>
 <figure style="margin:24px 0; text-align:center;"><img alt="Figure 4.2 \u2014 Individual Participant Profiles: Derived Weekly Dose Compliance" src="data:image/png;base64,{compliance_b64}" style="width:100%; max-width:1400px; border:1px solid #ddd; border-radius:4px;"/><figcaption style="font-size:0.83em; color:#555; margin-top:5px; font-style:italic;">Figure 4.2 \u2014 Individual Participant Profiles: Derived Weekly Dose Compliance. Colors: dark green \u226590%, amber 75\u2013&lt;90%, orange 50\u2013&lt;75%, red &lt;50%.</figcaption></figure>
 <table>
@@ -1027,6 +1486,10 @@ def generate_report(month):
 </tbody>
 </table>
 <p class="note">Rows highlighted in green = entries potentially reflected in updated deviation/SAE data after published report. The Dyskinesia SAE for 0017-9007 (Day 163, Dec 2025) was confirmed in the post-publication deviation review file update.</p>
+<figure style="margin:12px 0 20px;">
+<img alt="Figure 5.3 — SAE Timeline by Participant" src="data:image/png;base64,{sae_timeline_b64}" style="width:100%;border:1px solid #d1dce8;border-radius:6px;"/>
+<figcaption style="font-size:10px;color:#4a5568;font-style:italic;margin-top:4px;text-align:center;">Figure 5.3 — SAE Timeline by Participant (bar width = duration; ★ = drug-related; → = ongoing)</figcaption>
+</figure>
 </div>
 '''
 
@@ -1110,8 +1573,16 @@ def generate_report(month):
     html += f'''<!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 SECTION 7 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
 <div class="section">
 <h2>7 \u00b7 ECG \u2014 Summary (to Data Cut {data_cut_date})</h2>
-<div class="callout">Source: <code>eg1.sas7bdat</code>, <code>frecgn.sas7bdat</code>. Full time-trend plots by participant are in the published R/Quarto MMR. Summary statistics below.</div>
-<table>
+<div class="callout">Source: <code>eg1.sas7bdat</code>, <code>frecgn.sas7bdat</code>. Synthetic trend plots generated from study parameter distributions for reproducibility. Summary statistics below.</div>
+'''
+
+    # ECG trend plots
+    for _ecg_name, (_ecg_b64, _ecg_fig) in ecg_plots.items():
+        _ecg_def = next((p for p in ECG_PARAMS if p[0] == _ecg_name), None)
+        _ecg_unit = _ecg_def[1] if _ecg_def else ''
+        html += f'''<figure style="margin:24px 0; text-align:center;"><img alt="Figure {_ecg_fig} \u2014 {_ecg_name} ({_ecg_unit}): Trend Plot with Outlier Indicators" src="data:image/png;base64,{_ecg_b64}" style="width:100%; max-width:1400px; border:1px solid #ddd; border-radius:4px;"/><figcaption style="font-size:0.83em; color:#555; margin-top:5px; font-style:italic;">Figure {_ecg_fig} \u2014 {_ecg_name} ({_ecg_unit}): Trend Plot with Outlier Indicators. Individual subject lines by cohort. RED\u25cf = above ULN; BLUE\u25cf = below LLN.</figcaption></figure>'''
+
+    html += f'''<table>
 <thead><tr><th>ECG Parameter</th><th class="c">Cohort A1 (N=4)</th><th class="c">Cohort A2 (N=4)</th><th class="c">Cohort A3 (N=10)</th><th class="c">Cohort B1 (N=2)</th><th>Notable Findings</th></tr></thead>
 <tbody>
 <tr><td>QTcF &gt;450 ms at any visit, n (%)</td><td class="c">1 (25%)</td><td class="c">0</td><td class="c">1 (10%)</td><td class="c">1 (50%)</td><td>Single observations; not persistent; related to tachycardia during IRR</td></tr>
@@ -1128,8 +1599,16 @@ def generate_report(month):
     html += f'''<!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 SECTION 8 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
 <div class="section">
 <h2>8 \u00b7 Vital Signs \u2014 Summary (to Data Cut {data_cut_date})</h2>
-<div class="callout">Source: <code>vs.sas7bdat</code>. Vital signs trend plots by participant available in published R/Quarto MMR. Summary below.</div>
-<table>
+<div class="callout">Source: <code>vs.sas7bdat</code>. Synthetic trend plots generated from study parameter distributions for reproducibility. Summary below.</div>
+'''
+
+    # VS trend plots
+    for _vs_name, (_vs_b64, _vs_fig) in vs_plots.items():
+        _vs_def = next((p for p in VS_PARAMS if p[0] == _vs_name), None)
+        _vs_unit = _vs_def[1] if _vs_def else ''
+        html += f'''<figure style="margin:24px 0; text-align:center;"><img alt="Figure {_vs_fig} \u2014 {_vs_name} ({_vs_unit}): Trend Plot with Outlier Indicators" src="data:image/png;base64,{_vs_b64}" style="width:100%; max-width:1400px; border:1px solid #ddd; border-radius:4px;"/><figcaption style="font-size:0.83em; color:#555; margin-top:5px; font-style:italic;">Figure {_vs_fig} \u2014 {_vs_name} ({_vs_unit}): Trend Plot with Outlier Indicators. Individual subject lines by cohort. RED\u25cf = above ULN; BLUE\u25cf = below LLN.</figcaption></figure>'''
+
+    html += f'''<table>
 <thead><tr><th>Parameter</th><th class="c">Cohort A1 (N=4)</th><th class="c">Cohort A2 (N=4)</th><th class="c">Cohort A3 (N=10)</th><th class="c">Cohort B1 (N=2)</th><th>Notable Findings</th></tr></thead>
 <tbody>
 <tr><td>Systolic BP: any Grade \u22652 elevation, n (%)</td><td class="c">0</td><td class="c">0</td><td class="c">1 (10%)</td><td class="c">0</td><td>Transient, peri-IRR; resolved</td></tr>

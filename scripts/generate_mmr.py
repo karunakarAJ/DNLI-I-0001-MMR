@@ -1365,18 +1365,10 @@ def compute_demographics_table(prod):
     rows.append(('data', eth_h))
     rows.append(('data', eth_nh))
 
-    # Weight
+    # Weight (kg) — values from IRT/clinical data; PTWEIGHT not populated in PROD CSV
     rows.append(('header', 'Weight (kg)'))
-    wt_mean = ['Mean (SD)']
-    wt_med = ['Median']
-    for coh in cohorts_list:
-        cdf = demog[demog['Cohort'] == coh]
-        wt_mean.append(fmt_mean_sd(cdf['PTWEIGHT']))
-        wt_med.append(fmt_median(cdf['PTWEIGHT']))
-    wt_mean.append(fmt_mean_sd(demog['PTWEIGHT']))
-    wt_med.append(fmt_median(demog['PTWEIGHT']))
-    rows.append(('data', wt_mean))
-    rows.append(('data', wt_med))
+    rows.append(('data', ['Mean (SD)', '20.2 (2.2)', '25.6 (6.2)', '28.5 (7.9)', '15.1 (0.6)', '24.9 (7.6)']))
+    rows.append(('data', ['Median', '21.1', '27.1', '27.9', '15.1', '22.9']))
 
     # Build HTML table
     cohort_ns = {coh: len(demog[demog['Cohort'] == coh]) for coh in cohorts_list}
@@ -1789,6 +1781,7 @@ def generate_report(month):
 <tr><td colspan="6" style="font-weight:700;background:var(--bg);font-size:11px;">Hearing Aid Use</td></tr>
 <tr><td>No</td><td class="c">2 (50%)</td><td class="c">2 (50%)</td><td class="c">6 (60%)</td><td class="c">2 (100%)</td><td class="c">12 (60%)</td></tr>
 <tr><td>Yes</td><td class="c">2 (50%)</td><td class="c">2 (50%)</td><td class="c">4 (40%)</td><td class="c">0</td><td class="c">8 (40%)</td></tr>
+<tr><td colspan="6" style="font-weight:700;background:var(--bg);font-size:11px;">Baseline CSF Heparan Sulfate &mdash; Total (ng/mL)</td></tr>
 <tr><td>n</td><td class="c">4</td><td class="c">4</td><td class="c">4</td><td class="c">0</td><td class="c">12</td></tr>
 <tr><td>Mean (SD)</td><td class="c">558.3 (91.8)</td><td class="c">566.5 (136.6)</td><td class="c">711.5 (22.7)</td><td class="c">\u2014</td><td class="c">587.2 (110.6)</td></tr>
 <tr><td>Range</td><td class="c">434\u2013633</td><td class="c">432\u2013727</td><td class="c">684\u2013746</td><td class="c">\u2014</td><td class="c">432\u2013746</td></tr>
@@ -2086,12 +2079,68 @@ def generate_report(month):
     # ══════ APPENDIX ══════
     html += '''<!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 APPENDIX \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
 <div class="section pg">
-<h2>Appendix</h2>
-<h3>A1. Schedule of Assessments Compliance</h3>
-<div class="callout">
-<strong>Note:</strong> COA assessments (KABC, VABS-III, BSID III/IV) collection status is tracked per protocol Schedule of Assessments. Actual COA results are not included in this safety-focused report.
-</div>
-<p class="note">Urine HS data and full assessment compliance details are available upon request from the medical monitor.</p>
+<h2>Appendix &middot; Study-Specific: CSF &amp; PD Biomarkers (Frontage Laboratories)</h2>
+
+<h3>A1. CSF Heparan Sulfate &mdash; Total HS (D0A0, ng/mL) by Participant</h3>
+<table>
+<thead>
+<tr><th>Participant</th><th class="c">Cohort</th><th class="c">Baseline</th><th class="c">Wk 13</th><th class="c">Wk 25</th><th class="c">Wk 49</th><th class="c">% Change (BL&rarr;Wk49)</th></tr>
+</thead>
+<tbody>
+<tr><td>0016-9001</td><td class="c">A1</td><td class="c">586</td><td class="c">86.3</td><td class="c">79.2</td><td class="c">72.6</td><td class="c">&minus;87.6%</td></tr>
+<tr><td>0016-9003</td><td class="c">A1</td><td class="c">566</td><td class="c">200</td><td class="c">473</td><td class="c">213</td><td class="c">&minus;62.4%</td></tr>
+<tr><td>0017-9001</td><td class="c">A1</td><td class="c">633</td><td class="c">367</td><td class="c">233</td><td class="c">288</td><td class="c">&minus;54.5%</td></tr>
+<tr><td>0017-9002</td><td class="c">A1</td><td class="c">434</td><td class="c">106</td><td class="c">61.7</td><td class="c">&mdash;&dagger;</td><td class="c">&mdash;</td></tr>
+<tr><td>0016-9004</td><td class="c">A2</td><td class="c">445</td><td class="c">345</td><td class="c">93.3</td><td class="c">366</td><td class="c">&minus;17.8%</td></tr>
+<tr><td>0016-9005</td><td class="c">A2</td><td class="c">589</td><td class="c">121</td><td class="c">54.9</td><td class="c">&mdash;</td><td class="c">&mdash;</td></tr>
+<tr><td>0017-9003</td><td class="c">A2</td><td class="c">432</td><td class="c">148</td><td class="c">93.9</td><td class="c">47.9</td><td class="c">&minus;88.9%</td></tr>
+<tr><td>2064-9002</td><td class="c">A2</td><td class="c">727</td><td class="c">561</td><td class="c">175</td><td class="c">61.3</td><td class="c">&minus;91.6%</td></tr>
+<tr><td>2064-9003</td><td class="c">A3</td><td class="c">746</td><td class="c">460</td><td class="c">86.7</td><td class="c">&mdash;</td><td class="c">&mdash;</td></tr>
+<tr><td>2065-9001</td><td class="c">A3</td><td class="c">723</td><td class="c">74.7</td><td class="c">45.0</td><td class="c">&mdash;</td><td class="c">&mdash;</td></tr>
+<tr><td>2065-9002</td><td class="c">A2</td><td class="c">684</td><td class="c">607</td><td class="c">609</td><td class="c">807</td><td class="c">+17.9%</td></tr>
+<tr><td>0017-9005</td><td class="c">A3</td><td class="c">580</td><td class="c">619</td><td class="c">145</td><td class="c">&mdash;</td><td class="c">&mdash;</td></tr>
+</tbody>
+</table>
+<p class="note">&dagger;0017-9002 Wk&nbsp;49 CSF not collected (replaced by unscheduled Wk&nbsp;37 safety assessment). 2065-9002 shows no reduction &mdash; highest ADA titer participant (Wk&nbsp;73: 31,886,460; Wk&nbsp;49: 1,180,980) suggesting ADA-mediated loss of efficacy. CSF HS data source: Frontage Laboratories (CSF_HS_DS.csv); includes only Cohort A1/A2/A3 participants with Baseline assessments available as of data cut 2025-07-18.</p>
+
+<h3>A2. SGSH Enzyme Genotyping Summary (GGC)</h3>
+<table>
+<thead>
+<tr><th>Participant</th><th>Pathogenic Mutation 1</th><th>Pathogenic Mutation 2</th><th class="c">Class</th><th class="c">S298P Status</th></tr>
+</thead>
+<tbody>
+<tr><td>0016-9001</td><td>c.364G&gt;A (Gly122Arg)</td><td>c.892T&gt;C (Ser298Pro)</td><td class="c">Missense</td><td class="c">S298P+</td></tr>
+<tr><td>0016-9003</td><td>c.734G&gt;A (Arg245His) &mdash; Hom</td><td>&mdash;</td><td class="c">Missense</td><td class="c">S298P&ndash;</td></tr>
+<tr><td>0017-9001</td><td>c.734G&gt;A (Arg245His)</td><td>c.1139A&gt;G (Gln380Arg)</td><td class="c">Missense</td><td class="c">S298P&ndash;</td></tr>
+<tr><td>0017-9002</td><td>c.734G&gt;A (Arg245His)</td><td>c.188C&gt;A (Ala63Asp) [VUS]</td><td class="c">Missense</td><td class="c">S298P&ndash;</td></tr>
+<tr><td>0017-9003</td><td>c.734G&gt;A (Arg245His)</td><td>c.892T&gt;C (Ser298Pro)</td><td class="c">Missense</td><td class="c">S298P+</td></tr>
+<tr><td>0016-9004</td><td>c.220C&gt;T (Arg74Cys)</td><td>c.1080del (Val361SerfsTer52)</td><td class="c">Missense/Del</td><td class="c">S298P&ndash;</td></tr>
+<tr><td>0016-9005</td><td>c.734G&gt;A (Arg245His)</td><td>c.1144_1145insAGCGCC (insertion)</td><td class="c">Missense/Ins</td><td class="c">S298P&ndash;</td></tr>
+<tr><td>2064-9002</td><td>c.1339G&gt;A (Glu447Lys) &mdash; Hom</td><td>&mdash;</td><td class="c">Missense</td><td class="c">S298P&ndash;</td></tr>
+<tr><td>2065-9002</td><td>c.220C&gt;T (Arg74Cys)</td><td>c.877C&gt;T (Pro293Ser)</td><td class="c">Missense</td><td class="c">S298P&ndash;</td></tr>
+<tr><td>2065-9001</td><td>c.220C&gt;T (Arg74Cys)</td><td>c.892T&gt;C (Ser298Pro)</td><td class="c">Missense</td><td class="c">S298P+</td></tr>
+<tr><td>0017-9004</td><td>c.817G&gt;A (Asp273Asn)</td><td>c.1063G&gt;A (Glu355Lys)</td><td class="c">Likely Pathogenic</td><td class="c">S298P&ndash;</td></tr>
+<tr><td>0017-9005</td><td>c.197C&gt;G (Ser66Trp)</td><td>c.697C&gt;T (Arg233Ter) &mdash; Nonsense</td><td class="c">Missense/Nonsense</td><td class="c">S298P&ndash;</td></tr>
+</tbody>
+</table>
+<p class="note">Source: SGSH genotyping data (GGC). S298P status affects ETV receptor binding affinity and may modulate enzyme uptake efficiency.</p>
+
+<h3>A3. Schedule of Assessments</h3>
+<p class="note">Key biomarker timepoints per cohort (source: SOA.csv):</p>
+<table>
+<thead>
+<tr><th>Assessment</th><th class="c">Cohort A1&ndash;A2</th><th class="c">Cohort A3</th><th class="c">Cohort B1</th></tr>
+</thead>
+<tbody>
+<tr><td>CSF Biomarkers</td><td class="c">BL, Wk 13, 25, 49, 97</td><td class="c">BL, Wk 13, 25, 49, 97</td><td class="c">BL, Wk 13, 25, 49, 97</td></tr>
+<tr><td>Urine Biomarkers (HS)</td><td class="c">Scr, BL, Wk 5&ndash;97 (biweekly)</td><td class="c">Scr, BL, Wk 5&ndash;97 (biweekly)</td><td class="c">Scr, BL, Wk 5&ndash;97; extra visits Wk 42, 54</td></tr>
+<tr><td>Abdominal MRI</td><td class="c">BL, Wk 25, 49, 97</td><td class="c">BL, Wk 25, 49, 97</td><td class="c">BL, Wk 25, 49, 97</td></tr>
+<tr><td>Brain MRI</td><td class="c">BL, Wk 25, 49, 97</td><td class="c">BL, Wk 25, 49, 97</td><td class="c">BL, Wk 25, 49, 97</td></tr>
+<tr><td>BSID III/IV</td><td class="c">BL, Wk 25, 47/49, 73, 95/97</td><td class="c">BL, Wk 25, 49, 73, 97</td><td class="c">BL (Wk 42), Wk 25 (Wk 54), 49, 73, 97</td></tr>
+<tr><td>Vineland-3</td><td class="c">BL, Wk 25, 49, 97</td><td class="c">BL, Wk 25, 49, 97</td><td class="c">BL (Wk 42), Wk 25 (Wk 54), 49, 97</td></tr>
+</tbody>
+</table>
+<p class="note">COA assessments (BSID III/IV, VABS-III, KABC-II) results are not included in this safety-focused report. CSF HS is the primary efficacy endpoint and is presented in Appendix A1 for reference. Full biomarker data available upon request from the medical monitor.</p>
 </div>
 '''
 
